@@ -118,7 +118,7 @@ export const TodoProvider = ({ children }) => {
   // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
   useEffect(() => {
     if (currentUser?.uid) {
-      const userTasks = loadUserTasks(currentUser.uid);
+      const userTasks = loadUserTasks(currentUser.uid, currentUser.email);
       setTasks(userTasks);
 
       // If Firebase Cloud Database is configured, attach real-time Firestore listener
@@ -129,7 +129,7 @@ export const TodoProvider = ({ children }) => {
           (cloudTasks) => {
             if (cloudTasks && cloudTasks.length > 0) {
               setTasks(cloudTasks);
-              saveUserTasks(currentUser.uid, cloudTasks);
+              saveUserTasks(currentUser.uid, cloudTasks, currentUser.email);
             }
             setIsCloudSyncing(false);
           },
@@ -143,7 +143,7 @@ export const TodoProvider = ({ children }) => {
     } else {
       setTasks([]);
     }
-  }, [currentUser]);
+  }, [currentUser?.uid, currentUser?.email]);
 
   // Apply theme to DOM document
   useEffect(() => {
@@ -153,10 +153,10 @@ export const TodoProvider = ({ children }) => {
 
   // Persist tasks strictly scoped to current user
   useEffect(() => {
-    if (currentUser) {
-      saveUserTasks(currentUser.uid, tasks);
+    if (currentUser?.uid && tasks.length > 0) {
+      saveUserTasks(currentUser.uid, tasks, currentUser.email);
     }
-  }, [tasks, currentUser?.uid]);
+  }, [tasks, currentUser?.uid, currentUser?.email]);
 
   // Multi-tab storage listener for real-time synchronization
   useEffect(() => {

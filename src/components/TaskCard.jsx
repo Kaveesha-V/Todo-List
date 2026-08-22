@@ -64,21 +64,16 @@ export const TaskCard = ({ task }) => {
         onClick={handleCardClick}
         aria-label={`Task: ${task.title}`}
       >
-        {/* Checkbox (Locked permanently once completed as per Rule 8) */}
+        {/* Checkbox */}
         <button
           type="button"
-          className={`custom-checkbox ${isCompleted ? 'checked locked' : ''}`}
+          className={`custom-checkbox ${isCompleted ? 'checked' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
-            if (isCompleted) {
-              addToast("Completed tasks are locked and cannot be unmarked or deleted.", "info");
-              return;
-            }
             toggleTaskComplete(task.id);
           }}
-          title={isCompleted ? "Completed task (Locked)" : "Mark as completed"}
-          aria-label={isCompleted ? "Task is permanently completed" : "Mark as completed"}
-          disabled={isCompleted}
+          title={isCompleted ? "Mark as active / uncomplete" : "Mark as completed"}
+          aria-label={isCompleted ? "Mark as incomplete" : "Mark as completed"}
         >
           {isCompleted && <Check size={13} strokeWidth={3} />}
         </button>
@@ -91,11 +86,11 @@ export const TaskCard = ({ task }) => {
 
           {/* Badges & Meta Row */}
           <div className="task-card-meta-row">
-            {/* Locked Completed Status Badge (Rule 8) */}
+            {/* Status Badge */}
             {isCompleted ? (
-              <span className="badge-item badge-completed-locked" title="Permanently marked as completed">
-                <Lock size={10} />
-                <span>Completed (Locked)</span>
+              <span className="badge-item badge-completed-locked" title="Completed Task">
+                <Check size={11} strokeWidth={2.5} />
+                <span>Done</span>
               </span>
             ) : (
               /* Mark as Unfinished / Move to Future Day Trigger (Rule 6 & 9) */
@@ -169,22 +164,20 @@ export const TaskCard = ({ task }) => {
           </div>
         </div>
 
-        {/* Hover Action Buttons (Delete only allowed for active uncompleted tasks as per Rule 8) */}
+        {/* Action Buttons (Delete available for all tasks) */}
         <div className="task-card-actions">
-          {!isCompleted && (
-            <button
-              type="button"
-              className="card-action-btn delete"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteTask(task.id);
-              }}
-              title="Delete task"
-              aria-label="Delete task"
-            >
-              <Trash2 size={14} />
-            </button>
-          )}
+          <button
+            type="button"
+            className="card-action-btn delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteTask(task.id);
+            }}
+            title="Delete task"
+            aria-label="Delete task"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
       </article>
 

@@ -98,10 +98,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Helper to generate starter tasks
-  const createStarterTasks = (uid, calendarConnected = false) => {
-    const existing = loadUserTasks(uid);
+  const createStarterTasks = (uid, calendarConnected = false, email = null) => {
+    const existing = loadUserTasks(uid, email);
     if (!existing || existing.length === 0) {
-      saveUserTasks(uid, [
+      const welcomeTasks = [
         {
           id: `task_welcome_${Date.now()}`,
           userId: uid,
@@ -116,11 +116,12 @@ export const AuthProvider = ({ children }) => {
             { id: `sub_2_${Date.now()}`, title: "Check Task Detail panel and Google Calendar sync", done: false }
           ],
           googleEventId: calendarConnected ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
-          reminderOffsetsMinutes: [60],
+          reminderOffsetsMinutes: [30],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-      ]);
+      ];
+      saveUserTasks(uid, welcomeTasks, email);
     }
   };
 
@@ -129,7 +130,7 @@ export const AuthProvider = ({ children }) => {
     if (isCloudDatabaseReady()) {
       try {
         const user = await firebaseLoginWithGoogle();
-        createStarterTasks(user.uid, true);
+        createStarterTasks(user.uid, true, user.email);
         setCurrentUser(user);
         setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
         setGoogleModalOpen(false);

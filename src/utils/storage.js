@@ -4,14 +4,24 @@ const STORAGE_KEY_AUTH_USER = 'aura_auth_current_user_v2';
 const STORAGE_KEY_SAVED_ACCOUNTS = 'aura_saved_accounts_v2';
 const STORAGE_KEY_THEME = 'aura_theme_v1';
 
-// Per-User Task Storage
-export const loadUserTasks = (userId) => {
-  if (!userId) return [];
+// Per-User Task Storage with Dual UID and Email Persistence
+export const loadUserTasks = (userId, email = null) => {
+  if (!userId && !email) return [];
   try {
-    const raw = localStorage.getItem(`aura_tasks_${userId}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+    if (userId) {
+      const raw = localStorage.getItem(`aura_tasks_${userId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    }
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      const rawEmail = localStorage.getItem(`aura_tasks_email_${cleanEmail}`);
+      if (rawEmail) {
+        const parsed = JSON.parse(rawEmail);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     }
   } catch (e) {
     console.warn("Failed to load user tasks from localStorage", e);
@@ -19,19 +29,28 @@ export const loadUserTasks = (userId) => {
   return [];
 };
 
-export const saveUserTasks = (userId, tasks) => {
-  if (!userId) return;
+export const saveUserTasks = (userId, tasks, email = null) => {
+  if (!tasks) return;
   try {
-    localStorage.setItem(`aura_tasks_${userId}`, JSON.stringify(tasks));
+    if (userId) {
+      localStorage.setItem(`aura_tasks_${userId}`, JSON.stringify(tasks));
+    }
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      localStorage.setItem(`aura_tasks_email_${cleanEmail}`, JSON.stringify(tasks));
+    }
   } catch (e) {
     console.warn("Failed to save user tasks to localStorage", e);
   }
 };
 
-export const deleteUserTasks = (userId) => {
-  if (!userId) return;
+export const deleteUserTasks = (userId, email = null) => {
   try {
-    localStorage.removeItem(`aura_tasks_${userId}`);
+    if (userId) localStorage.removeItem(`aura_tasks_${userId}`);
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      localStorage.removeItem(`aura_tasks_email_${cleanEmail}`);
+    }
   } catch (e) {
     console.warn("Failed to delete user tasks", e);
   }
