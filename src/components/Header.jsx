@@ -41,10 +41,6 @@ export const Header = ({ onToggleSidebar, onToggleAISidebar }) => {
           <div>
             <h1 className="brand-title">
               Aura
-              <span className="brand-badge">
-                <Sparkles size={11} style={{ display: 'inline', marginRight: '3px' }} />
-                AI Sync
-              </span>
             </h1>
           </div>
         </div>

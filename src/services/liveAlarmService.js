@@ -1,51 +1,114 @@
 /**
  * Live Alarm & Reminder Audio Service
- * Plays synthesized pleasant reminder chimes using Web Audio API
+ * Plays synthesized 6-8 second rhythmic musical melody using Web Audio API
  * and handles desktop/mobile browser notifications
  */
 
-// Synthesize a pleasant dual-tone notification chime
-export const playNotificationChime = (type = 'standard') => {
+let activeAudioCtx = null;
+let activeOscillators = [];
+
+export const stopNotificationAlarm = () => {
+  try {
+    if (activeOscillators && activeOscillators.length > 0) {
+      activeOscillators.forEach(osc => {
+        try { osc.stop(); } catch (e) {}
+      });
+      activeOscillators = [];
+    }
+    if (activeAudioCtx && activeAudioCtx.state !== 'closed') {
+      activeAudioCtx.close();
+      activeAudioCtx = null;
+    }
+  } catch (e) {
+    console.warn("Alarm stop notice:", e);
+  }
+};
+
+/**
+ * Plays a 6-8 second rhythmic musical melody
+ */
+export const playNotificationChime = (type = 'urgent') => {
+  stopNotificationAlarm();
+
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     
-    const ctx = new AudioContext();
-    const now = ctx.currentTime;
+    activeAudioCtx = new AudioContext();
+    const ctx = activeAudioCtx;
+    const startTime = ctx.currentTime + 0.05;
 
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gainNode = ctx.createGain();
+    // Pleasant pentatonic melody notes (Hz)
+    // C5, E5, G5, A5, C6, G5, E5, D5, C5, G5, C6
+    const melodyNotes = [
+      { note: 523.25, time: 0.0, dur: 0.35 },  // C5
+      { note: 659.25, time: 0.4, dur: 0.35 },  // E5
+      { note: 783.99, time: 0.8, dur: 0.45 },  // G5
+      { note: 880.00, time: 1.3, dur: 0.35 },  // A5
+      { note: 1046.5, time: 1.7, dur: 0.55 },  // C6
+      { note: 783.99, time: 2.3, dur: 0.35 },  // G5
+      { note: 659.25, time: 2.7, dur: 0.45 },  // E5
+      { note: 587.33, time: 3.2, dur: 0.35 },  // D5
+      // Second Rhythmic phrase (3.8s to 6.8s)
+      { note: 523.25, time: 3.8, dur: 0.35 },  // C5
+      { note: 659.25, time: 4.2, dur: 0.35 },  // E5
+      { note: 783.99, time: 4.6, dur: 0.45 },  // G5
+      { note: 880.00, time: 5.1, dur: 0.35 },  // A5
+      { note: 1046.5, time: 5.5, dur: 0.65 },  // C6
+      { note: 1318.5, time: 6.2, dur: 0.90 }   // E6 (Grand final harmonic bell)
+    ];
 
-    osc1.type = 'sine';
-    osc2.type = 'triangle';
+    // Harmony bass notes
+    const bassNotes = [
+      { note: 130.81, time: 0.0, dur: 1.6 }, // C3
+      { note: 174.61, time: 1.7, dur: 1.5 }, // F3
+      { note: 196.00, time: 3.2, dur: 0.6 }, // G3
+      { note: 130.81, time: 3.8, dur: 1.6 }, // C3
+      { note: 174.61, time: 5.5, dur: 1.8 }  // F3
+    ];
 
-    if (type === 'urgent') {
-      // Urgent alarm chime (880Hz -> 1046.5Hz)
-      osc1.frequency.setValueAtTime(880, now);
-      osc1.frequency.exponentialRampToValueAtTime(1046.5, now + 0.15);
-      osc2.frequency.setValueAtTime(440, now);
-    } else {
-      // Pleasant reminder chime (523.25Hz -> 659.25Hz -> 783.99Hz)
-      osc1.frequency.setValueAtTime(523.25, now); // C5
-      osc1.frequency.setValueAtTime(659.25, now + 0.12); // E5
-      osc1.frequency.setValueAtTime(783.99, now + 0.24); // G5
-      osc2.frequency.setValueAtTime(261.63, now);
-    }
+    // Schedule melody notes
+    melodyNotes.forEach(({ note, time, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    gainNode.gain.setValueAtTime(0.3, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.type = type === 'urgent' ? 'triangle' : 'sine';
+      osc.frequency.setValueAtTime(note, startTime + time);
 
-    osc1.connect(gainNode);
-    osc2.connect(gainNode);
-    gainNode.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.001, startTime + time);
+      gain.gain.exponentialRampToValueAtTime(0.28, startTime + time + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + time + dur);
 
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 0.5);
-    osc2.stop(now + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime + time);
+      osc.stop(startTime + time + dur);
+      activeOscillators.push(osc);
+    });
+
+    // Schedule bass warmth
+    bassNotes.forEach(({ note, time, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(note, startTime + time);
+
+      gain.gain.setValueAtTime(0.001, startTime + time);
+      gain.gain.exponentialRampToValueAtTime(0.18, startTime + time + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + time + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime + time);
+      osc.stop(startTime + time + dur);
+      activeOscillators.push(osc);
+    });
+
   } catch (e) {
-    console.warn("Web Audio chime playback notice:", e);
+    console.warn("Web Audio melody synthesis notice:", e);
   }
 };
 

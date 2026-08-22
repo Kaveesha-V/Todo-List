@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
+import { playNotificationChime, stopNotificationAlarm } from '../services/liveAlarmService';
 import {
   X,
   Bell,
@@ -11,7 +12,9 @@ import {
   Trash2,
   Download,
   User,
-  LogOut
+  LogOut,
+  Volume2,
+  Plus
 } from 'lucide-react';
 
 export const SettingsModal = () => {
@@ -30,6 +33,9 @@ export const SettingsModal = () => {
     addToast,
     tasks
   } = useTodo();
+
+  const [customOffsetInput, setCustomOffsetInput] = useState('');
+  const [isPlayingTestSound, setIsPlayingTestSound] = useState(false);
 
   if (!isSettingsOpen) return null;
 
@@ -50,11 +56,36 @@ export const SettingsModal = () => {
 
   const handleToggleOffset = (offsetMinutes) => {
     if (!currentUser) return;
-    const current = currentUser.reminderOffsets || [];
+    const current = currentUser.reminderOffsets || [30];
     const next = current.includes(offsetMinutes)
       ? current.filter(o => o !== offsetMinutes)
       : [...current, offsetMinutes];
-    updateReminderOffsets(next);
+    updateReminderOffsets(next.length > 0 ? next : [0]);
+    addToast("Reminder offset updated!", "success");
+  };
+
+  const handleAddCustomOffset = (e) => {
+    e.preventDefault();
+    const val = parseInt(customOffsetInput, 10);
+    if (!isNaN(val) && val >= 0) {
+      const current = currentUser?.reminderOffsets || [];
+      if (!current.includes(val)) {
+        updateReminderOffsets([...current, val]);
+        addToast(`Added ${val} min reminder offset`, "success");
+      }
+      setCustomOffsetInput('');
+    }
+  };
+
+  const handleTestSound = () => {
+    if (isPlayingTestSound) {
+      stopNotificationAlarm();
+      setIsPlayingTestSound(false);
+    } else {
+      setIsPlayingTestSound(true);
+      playNotificationChime('urgent');
+      setTimeout(() => setIsPlayingTestSound(false), 7000);
+    }
   };
 
   const handleExportData = () => {
@@ -192,12 +223,16 @@ export const SettingsModal = () => {
 
             {/* Reminder Offsets */}
             <div style={{ marginTop: '16px' }}>
-              <div className="switch-label" style={{ marginBottom: '4px' }}>
-                Default Reminder Offsets:
+              <div className="switch-label" style={{ marginBottom: '8px' }}>
+                Default Reminder Offsets (Multi-select):
               </div>
               <div className="reminder-offsets-selector">
                 {[
+                  { label: '⚡ At time (0m)', val: 0 },
+                  { label: '5 min before', val: 5 },
                   { label: '10 min before', val: 10 },
+                  { label: '15 min before', val: 15 },
+                  { label: '30 min before', val: 30 },
                   { label: '1 hour before', val: 60 },
                   { label: '1 day before', val: 1440 }
                 ].map(offset => {
@@ -213,6 +248,48 @@ export const SettingsModal = () => {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Custom Offset Form & Sound Tester */}
+              <div style={{ marginTop: '12px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <form onSubmit={handleAddCustomOffset} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10000"
+                    placeholder="Custom mins..."
+                    value={customOffsetInput}
+                    onChange={(e) => setCustomOffsetInput(e.target.value)}
+                    style={{
+                      width: '120px',
+                      padding: '5px 10px',
+                      background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.8rem'
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    className="offset-pill-btn active"
+                    style={{ padding: '5px 10px' }}
+                  >
+                    <Plus size={13} />
+                    <span>Add</span>
+                  </button>
+                </form>
+
+                {/* Alarm Melody Tester */}
+                <button
+                  type="button"
+                  className="digest-chip-btn"
+                  onClick={handleTestSound}
+                  style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Volume2 size={14} style={{ color: 'var(--primary)' }} />
+                  <span>{isPlayingTestSound ? '⏹ Stop Melody' : '🎵 Test 8s Alarm Melody'}</span>
+                </button>
               </div>
             </div>
           </div>

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { formatFriendlyDate } from '../utils/dateUtils';
 import { getGoogleCalendarWebLink } from '../services/googleCalendar';
+import { UnfinishedRescheduleModal } from './UnfinishedRescheduleModal';
 import {
   Check,
   Calendar,
@@ -9,7 +10,9 @@ import {
   Trash2,
   Tag,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  RotateCcw,
+  Lock
 } from 'lucide-react';
 
 export const TaskCard = ({ task }) => {
@@ -17,8 +20,11 @@ export const TaskCard = ({ task }) => {
     toggleTaskComplete,
     setActiveTask,
     activeTask,
-    deleteTask
+    deleteTask,
+    addToast
   } = useTodo();
+
+  const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
 
   const isCompleted = task.status === 'done';
   const isSelected = activeTask?.id === task.id;
@@ -28,8 +34,13 @@ export const TaskCard = ({ task }) => {
   const completedSubtasksCount = task.subtasks?.filter(s => s.done).length || 0;
 
   const handleCardClick = (e) => {
-    // If clicking on checkbox or action buttons, don't open drawer
-    if (e.target.closest('.custom-checkbox') || e.target.closest('.card-action-btn') || e.target.closest('a')) {
+    // If clicking on checkbox, action buttons, or modal triggers, don't open drawer
+    if (
+      e.target.closest('.custom-checkbox') ||
+      e.target.closest('.card-action-btn') ||
+      e.target.closest('.badge-unfinished-btn') ||
+      e.target.closest('a')
+    ) {
       return;
     }
     setActiveTask(task);
@@ -47,95 +58,142 @@ export const TaskCard = ({ task }) => {
   const gcalUrl = task.gcalLink || (task.dueDate ? getGoogleCalendarWebLink(task) : null);
 
   return (
-    <article
-      className={`task-card ${isCompleted ? 'completed' : ''} ${isSelected ? 'active-selected' : ''}`}
-      onClick={handleCardClick}
-      aria-label={`Task: ${task.title}`}
-    >
-      {/* Checkbox */}
-      <button
-        type="button"
-        className={`custom-checkbox ${isCompleted ? 'checked' : ''}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleTaskComplete(task.id);
-        }}
-        aria-label={isCompleted ? "Mark as incomplete" : "Mark as completed"}
+    <>
+      <article
+        className={`task-card ${isCompleted ? 'completed locked-completed' : ''} ${isSelected ? 'active-selected' : ''}`}
+        onClick={handleCardClick}
+        aria-label={`Task: ${task.title}`}
       >
-        {isCompleted && <Check size={13} strokeWidth={3} />}
-      </button>
-
-      {/* Task Main Content */}
-      <div className="task-card-main">
-        <div className="task-card-header-row">
-          <h3 className="task-card-title">{task.title}</h3>
-        </div>
-
-        {/* Badges & Meta Row */}
-        <div className="task-card-meta-row">
-          {/* Due Date & Time Badge */}
-          {friendlyDue && (
-            <span className={`badge-item badge-due ${friendlyDue.tag}`}>
-              <Calendar size={11} />
-              {friendlyDue.text}
-            </span>
-          )}
-
-          {/* Priority Color Tag */}
-          <span className={`badge-item ${getPriorityBadgeClass(task.priority)}`}>
-            <AlertCircle size={11} />
-            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-          </span>
-
-          {/* Subtask Checklist Icon & Counter */}
-          {subtasksCount > 0 && (
-            <span className="badge-item badge-subtask" title={`${completedSubtasksCount} of ${subtasksCount} subtasks completed`}>
-              <CheckSquare size={11} />
-              <span>{completedSubtasksCount}/{subtasksCount}</span>
-            </span>
-          )}
-
-          {/* Direct Clickable Google Calendar Synced Badge */}
-          {gcalUrl && (
-            <a
-              href={gcalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="badge-item badge-gcal clickable"
-              title="Open event on Google Calendar"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Calendar size={11} />
-              <span>G-Cal</span>
-              <ExternalLink size={10} style={{ marginLeft: '3px', opacity: 0.8 }} />
-            </a>
-          )}
-
-          {/* Tags */}
-          {task.tags && task.tags.map((tag, idx) => (
-            <span key={idx} className="badge-item badge-tag">
-              <Tag size={10} />
-              <span>{tag}</span>
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Hover Action Buttons */}
-      <div className="task-card-actions">
+        {/* Checkbox (Locked permanently once completed as per Rule 8) */}
         <button
           type="button"
-          className="card-action-btn delete"
+          className={`custom-checkbox ${isCompleted ? 'checked locked' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
-            deleteTask(task.id);
+            if (isCompleted) {
+              addToast("Completed tasks are locked and cannot be unmarked or deleted.", "info");
+              return;
+            }
+            toggleTaskComplete(task.id);
           }}
-          title="Delete task"
-          aria-label="Delete task"
+          title={isCompleted ? "Completed task (Locked)" : "Mark as completed"}
+          aria-label={isCompleted ? "Task is permanently completed" : "Mark as completed"}
+          disabled={isCompleted}
         >
-          <Trash2 size={14} />
+          {isCompleted && <Check size={13} strokeWidth={3} />}
         </button>
-      </div>
-    </article>
+
+        {/* Task Main Content */}
+        <div className="task-card-main">
+          <div className="task-card-header-row">
+            <h3 className="task-card-title">{task.title}</h3>
+          </div>
+
+          {/* Badges & Meta Row */}
+          <div className="task-card-meta-row">
+            {/* Locked Completed Status Badge (Rule 8) */}
+            {isCompleted ? (
+              <span className="badge-item badge-completed-locked" title="Permanently marked as completed">
+                <Lock size={10} />
+                <span>Completed (Locked)</span>
+              </span>
+            ) : (
+              /* Mark as Unfinished / Move to Future Day Trigger (Rule 6 & 9) */
+              <button
+                type="button"
+                className="badge-item badge-unfinished-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsRescheduleOpen(true);
+                }}
+                title="Mark as unfinished & move to future date"
+              >
+                <RotateCcw size={11} />
+                <span>Unfinished? Move Date</span>
+              </button>
+            )}
+
+            {/* Due Date & Time Badge */}
+            {friendlyDue && (
+              <span className={`badge-item badge-due ${friendlyDue.tag}`}>
+                <Calendar size={11} />
+                {friendlyDue.text}
+              </span>
+            )}
+
+            {/* Rescheduled Notice if task was previously unfinished & moved */}
+            {task.rescheduledFrom && (
+              <span className="badge-item badge-rescheduled" title={`Moved from ${task.rescheduledFrom}`}>
+                <RotateCcw size={10} />
+                <span>Moved</span>
+              </span>
+            )}
+
+            {/* Priority Color Tag */}
+            <span className={`badge-item ${getPriorityBadgeClass(task.priority)}`}>
+              <AlertCircle size={11} />
+              {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+            </span>
+
+            {/* Subtask Checklist Icon & Counter */}
+            {subtasksCount > 0 && (
+              <span className="badge-item badge-subtask" title={`${completedSubtasksCount} of ${subtasksCount} subtasks completed`}>
+                <CheckSquare size={11} />
+                <span>{completedSubtasksCount}/{subtasksCount}</span>
+              </span>
+            )}
+
+            {/* Direct Clickable Google Calendar Synced Badge */}
+            {gcalUrl && (
+              <a
+                href={gcalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="badge-item badge-gcal clickable"
+                title="Open event on Google Calendar"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Calendar size={11} />
+                <span>G-Cal</span>
+                <ExternalLink size={10} style={{ marginLeft: '3px', opacity: 0.8 }} />
+              </a>
+            )}
+
+            {/* Tags */}
+            {task.tags && task.tags.map((tag, idx) => (
+              <span key={idx} className="badge-item badge-tag">
+                <Tag size={10} />
+                <span>{tag}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Hover Action Buttons (Delete only allowed for active uncompleted tasks as per Rule 8) */}
+        <div className="task-card-actions">
+          {!isCompleted && (
+            <button
+              type="button"
+              className="card-action-btn delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteTask(task.id);
+              }}
+              title="Delete task"
+              aria-label="Delete task"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </article>
+
+      {/* Unfinished Reschedule Date Modal (Rule 9) */}
+      <UnfinishedRescheduleModal
+        task={task}
+        isOpen={isRescheduleOpen}
+        onClose={() => setIsRescheduleOpen(false)}
+      />
+    </>
   );
 };

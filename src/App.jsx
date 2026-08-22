@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { TodoProvider, useTodo } from './context/TodoContext';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
-import { AIDailyDigest } from './components/AIDailyDigest';
+import { ReportingAnalyticsDashboard } from './components/ReportingAnalyticsDashboard';
 import { NaturalLanguageInput } from './components/NaturalLanguageInput';
 import { TaskFilterBar } from './components/TaskFilterBar';
 import { TaskListView } from './components/TaskListView';
@@ -16,6 +16,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { SetupChecklistWidget } from './components/SetupChecklistWidget';
 import { AIAssistantDrawer } from './components/AIAssistantDrawer';
+import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/Toast';
 import { Sparkles, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -36,6 +37,7 @@ const DashboardContent = () => {
   if (!currentUser) {
     return (
       <div className="app-container">
+        <AnimatedBackground />
         <AuthScreen />
         <ToastContainer />
       </div>
@@ -44,6 +46,9 @@ const DashboardContent = () => {
 
   return (
     <div className="app-workspace-layout">
+      {/* Animated Glowing Aurora Canvas Background */}
+      <AnimatedBackground />
+
       {/* Todoist-Inspired Left Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -65,10 +70,7 @@ const DashboardContent = () => {
           ) : activeNavTab === 'filters' ? (
             <FiltersAndLabelsView />
           ) : activeNavTab === 'reporting' ? (
-            <div className="reporting-view-container animate-fade-in">
-              <h1 className="view-title-heading">Reporting & AI Digest</h1>
-              <AIDailyDigest />
-            </div>
+            <ReportingAnalyticsDashboard />
           ) : activeNavTab === 'kanban' ? (
             <div className="kanban-view-container animate-fade-in">
               <NaturalLanguageInput />
