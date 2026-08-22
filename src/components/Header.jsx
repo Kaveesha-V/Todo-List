@@ -16,24 +16,23 @@ import {
 } from 'lucide-react';
 
 export const Header = ({ onToggleSidebar }) => {
-  const { currentUser, loginWithGoogle } = useAuth();
-  const { theme, toggleTheme, setIsSettingsOpen, setOnboardingOpen } = useTodo();
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const { currentUser, connectGoogleCalendar } = useAuth();
+  const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
 
   return (
     <header className="app-header">
       <div className="header-inner">
-        {/* Left: Brand & Sidebar Toggle */}
+        {/* Extreme Left: Sidebar Toggle & Brand */}
         <div className="brand-section">
           {onToggleSidebar && (
             <button
               type="button"
-              className="header-sidebar-toggle-btn"
+              className="header-sidebar-toggle-btn far-left-edge"
               onClick={onToggleSidebar}
               title="Toggle Sidebar Navigation"
               aria-label="Toggle Sidebar"
             >
-              <Menu size={18} />
+              <Menu size={20} />
             </button>
           )}
           <div className="brand-logo">
@@ -68,7 +67,7 @@ export const Header = ({ onToggleSidebar }) => {
                 className="sync-status-indicator"
                 style={{ cursor: 'pointer', background: 'var(--gcal-bg)', borderColor: 'var(--gcal-border)', color: 'var(--gcal-blue)' }}
                 onClick={() => setIsSettingsOpen(true)}
-                title="Google Calendar Synced"
+                title="Google Calendar Live Synced"
               >
                 <Calendar size={13} />
                 <span>G-Cal Linked</span>
@@ -77,7 +76,7 @@ export const Header = ({ onToggleSidebar }) => {
               <button
                 type="button"
                 className="gcal-connect-header-btn"
-                onClick={loginWithGoogle}
+                onClick={() => connectGoogleCalendar && connectGoogleCalendar()}
                 title="Connect your Google Calendar"
               >
                 <Calendar size={13} />
@@ -95,48 +94,6 @@ export const Header = ({ onToggleSidebar }) => {
           >
             {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
-
-          {/* Settings Button */}
-          <button
-            className="header-icon-btn"
-            onClick={() => setIsSettingsOpen(true)}
-            title="Settings & Reminders"
-            aria-label="Settings"
-          >
-            <Settings size={18} />
-          </button>
-
-          {/* User Account / Profile Button */}
-          {currentUser ? (
-            <div style={{ position: 'relative' }}>
-              <button
-                className="user-profile-btn"
-                onClick={() => setAccountMenuOpen(!accountMenuOpen)}
-                title="Account Menu & Switcher"
-                aria-expanded={accountMenuOpen}
-              >
-                <div className="user-avatar">
-                  {currentUser.displayName.charAt(0)}
-                </div>
-                <span>{currentUser.displayName.split(' ')[0]}</span>
-                <ChevronDown size={13} style={{ color: 'var(--text-tertiary)' }} />
-              </button>
-
-              <AccountMenu
-                isOpen={accountMenuOpen}
-                onClose={() => setAccountMenuOpen(false)}
-              />
-            </div>
-          ) : (
-            <button
-              className="nlp-submit-btn"
-              style={{ padding: '6px 14px', fontSize: '0.85rem' }}
-              onClick={() => setAuthModalOpen(true)}
-            >
-              <LogIn size={15} />
-              <span>Sign In</span>
-            </button>
-          )}
         </div>
       </div>
     </header>

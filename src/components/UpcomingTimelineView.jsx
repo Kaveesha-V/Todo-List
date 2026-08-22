@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { useAuth } from '../context/AuthContext';
+import { syncTaskToGoogleCalendarAPI, getGoogleCalendarWebLink } from '../services/googleCalendar';
 import { TaskCard } from './TaskCard';
 import {
   Calendar,
@@ -12,48 +13,97 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  ArrowUpDown,
+  ExternalLink,
+  History,
+  LayoutGrid,
+  List,
+  AlertCircle
 } from 'lucide-react';
 
 export const UpcomingTimelineView = () => {
-  const { tasks, addTask } = useTodo();
+  const { tasks, addTask, addToast } = useTodo();
   const { currentUser, connectGoogleCalendar } = useAuth();
+  
+  // UI & Calendar State
+  const [viewLayout, setViewLayout] = useState('timeline'); // 'timeline' | 'month_grid'
+  const [sortOption, setSortOption] = useState('date_asc'); // 'date_asc' | 'priority' | 'gcal_first' | 'alpha'
   const [activeDayAdding, setActiveDayAdding] = useState(null);
   const [inlineTaskTitle, setInlineTaskTitle] = useState('');
   const [inlineTaskTime, setInlineTaskTime] = useState('09:00');
-  const [daysCount, setDaysCount] = useState(21); // Default 3 weeks, dynamically expandable
+  const [daysCount, setDaysCount] = useState(30); // 30 days rolling by default (unlimited expandable)
   const [selectedMonthOffset, setSelectedMonthOffset] = useState(0);
+  const [showPastHistory, setShowPastHistory] = useState(false);
+  const [customJumpDate, setCustomJumpDate] = useState('');
 
-  // Current anchor date based on month offset
+  // Date Anchors
   const today = new Date();
+  const todayDateStr = today.toISOString().split('T')[0];
   const anchorDate = new Date(today.getFullYear(), today.getMonth() + selectedMonthOffset, 1);
 
+  // Group tasks into Past and Future
+  const { pastTasks, upcomingTasks } = useMemo(() => {
+    const past = [];
+    const upcoming = [];
+
+    tasks.forEach(t => {
+      if (t.dueDate && t.dueDate < todayDateStr) {
+        past.push(t);
+      } else {
+        upcoming.push(t);
+      }
+    });
+
+    return { pastTasks: past, upcomingTasks: upcoming };
+  }, [tasks, todayDateStr]);
+
+  // Sort helper
+  const sortTasksArray = (taskList) => {
+    return [...taskList].sort((a, b) => {
+      if (sortOption === 'priority') {
+        const pMap = { high: 3, medium: 2, low: 1 };
+        return (pMap[b.priority] || 2) - (pMap[a.priority] || 2);
+      }
+      if (sortOption === 'gcal_first') {
+        const aGcal = a.gcalSynced || a.tags?.includes('gcal') ? 1 : 0;
+        const bGcal = b.gcalSynced || b.tags?.includes('gcal') ? 1 : 0;
+        return bGcal - aGcal;
+      }
+      if (sortOption === 'alpha') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+      // Default: date_asc
+      return (a.dueTime || '00:00').localeCompare(b.dueTime || '00:00');
+    });
+  };
+
   // Generate dynamic rolling timeline
-  const { daysList, allFutureDatesWithTasks } = useMemo(() => {
+  const { daysList } = useMemo(() => {
     const list = [];
     const startDate = selectedMonthOffset === 0 ? today : anchorDate;
     
-    // 1. Gather all tasks that have due dates in the future
+    // Gather all upcoming tasks dates
     const taskDatesSet = new Set(
-      tasks
+      upcomingTasks
         .filter(t => t.dueDate)
         .map(t => t.dueDate)
     );
 
-    // 2. Generate sequential days from startDate
+    // 1. Generate sequential days from startDate
     for (let i = 0; i < daysCount; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
 
       const dateStr = d.toISOString().split('T')[0];
-      taskDatesSet.delete(dateStr); // already included in sequential list
+      taskDatesSet.delete(dateStr);
 
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
       const dayShort = d.toLocaleDateString('en-US', { weekday: 'short' });
       const dayNum = d.getDate();
       const monthShort = d.toLocaleDateString('en-US', { month: 'short' });
 
-      const isToday = dateStr === today.toISOString().split('T')[0];
+      const isToday = dateStr === todayDateStr;
       const tomorrow = new Date();
       tomorrow.setDate(today.getDate() + 1);
       const isTomorrow = dateStr === tomorrow.toISOString().split('T')[0];
@@ -61,6 +111,8 @@ export const UpcomingTimelineView = () => {
       let label = `${dayNum} ${monthShort} · ${dayName}`;
       if (isToday) label = `${dayNum} ${monthShort} · Today · ${dayName}`;
       if (isTomorrow) label = `${dayNum} ${monthShort} · Tomorrow · ${dayName}`;
+
+      const dayTasks = sortTasksArray(upcomingTasks.filter(t => t.dueDate === dateStr));
 
       list.push({
         dateStr,
@@ -70,11 +122,12 @@ export const UpcomingTimelineView = () => {
         monthShort,
         label,
         isToday,
-        tasks: tasks.filter(t => t.dueDate === dateStr)
+        isPast: dateStr < todayDateStr,
+        tasks: dayTasks
       });
     }
 
-    // 3. Include any other distant future dates with tasks beyond current range
+    // 2. Add any other future dates that have tasks beyond the current daysCount
     const distantDates = Array.from(taskDatesSet)
       .filter(dateStr => dateStr > list[list.length - 1]?.dateStr)
       .sort();
@@ -94,27 +147,111 @@ export const UpcomingTimelineView = () => {
         monthShort,
         label: `${dayNum} ${monthShort} · ${dayName}`,
         isToday: false,
+        isPast: false,
         isDistant: true,
-        tasks: tasks.filter(t => t.dueDate === dateStr)
+        tasks: sortTasksArray(upcomingTasks.filter(t => t.dueDate === dateStr))
       });
     });
 
-    return { daysList: list, allFutureDatesWithTasks: distantDates };
-  }, [tasks, daysCount, selectedMonthOffset]);
+    return { daysList: list };
+  }, [upcomingTasks, daysCount, selectedMonthOffset, sortOption, todayDateStr]);
 
-  const handleInlineSubmit = (e, dateStr) => {
-    e.preventDefault();
-    if (inlineTaskTitle.trim()) {
-      addTask({
-        title: inlineTaskTitle.trim(),
-        dueDate: dateStr,
-        dueTime: inlineTaskTime,
-        priority: 'medium',
-        tags: ['upcoming', 'gcal'],
-        status: 'todo'
+  // Full Month Grid Days Generator
+  const monthGridDays = useMemo(() => {
+    const year = anchorDate.getFullYear();
+    const month = anchorDate.getMonth();
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const grid = [];
+    // Blank padding for days of week before 1st of month
+    for (let p = 0; p < firstDayIndex; p++) {
+      grid.push({ isBlank: true, id: `blank_${p}` });
+    }
+
+    for (let day = 1; day <= totalDaysInMonth; day++) {
+      const d = new Date(year, month, day);
+      const dateStr = d.toISOString().split('T')[0];
+      const isToday = dateStr === todayDateStr;
+      const isPast = dateStr < todayDateStr;
+      const dayTasks = upcomingTasks.filter(t => t.dueDate === dateStr);
+
+      grid.push({
+        isBlank: false,
+        dayNum: day,
+        dateStr,
+        isToday,
+        isPast,
+        tasks: dayTasks,
+        id: dateStr
       });
-      setInlineTaskTitle('');
-      setActiveDayAdding(null);
+    }
+
+    return grid;
+  }, [anchorDate, upcomingTasks, todayDateStr]);
+
+  // Handle adding task with automatic Google Calendar Event Creation
+  const handleInlineSubmit = async (e, dateStr) => {
+    e.preventDefault();
+    if (!inlineTaskTitle.trim()) return;
+
+    // Block past dates for new tasks
+    if (dateStr < todayDateStr) {
+      if (addToast) addToast("Cannot schedule tasks in past dates", "error");
+      return;
+    }
+
+    const newTaskData = {
+      title: inlineTaskTitle.trim(),
+      dueDate: dateStr,
+      dueTime: inlineTaskTime || '09:00',
+      priority: 'medium',
+      tags: ['upcoming', 'gcal'],
+      status: 'todo',
+      gcalSynced: true
+    };
+
+    // Live Google Calendar API Event creation
+    if (currentUser?.calendarConnected) {
+      try {
+        const syncResult = await syncTaskToGoogleCalendarAPI(currentUser?.googleCalendarToken, newTaskData);
+        newTaskData.gcalEventId = syncResult?.eventId || null;
+        newTaskData.gcalLink = syncResult?.htmlLink || getGoogleCalendarWebLink(newTaskData);
+      } catch (err) {
+        console.warn("Google Calendar sync warning:", err);
+      }
+    } else {
+      newTaskData.gcalLink = getGoogleCalendarWebLink(newTaskData);
+    }
+
+    addTask(newTaskData);
+    if (addToast) {
+      addToast(`Task added & synced to Google Calendar for ${dateStr}! 📅`, "success");
+    }
+
+    setInlineTaskTitle('');
+    setActiveDayAdding(null);
+  };
+
+  // Jump to custom date
+  const handleJumpToDate = (e) => {
+    const selectedDate = e.target.value;
+    setCustomJumpDate(selectedDate);
+    if (selectedDate) {
+      if (selectedDate < todayDateStr) {
+        if (addToast) addToast("Selected date is in the past", "info");
+      }
+      const el = document.getElementById(`day-section-${selectedDate}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        // Expand days to include that date
+        setDaysCount(prev => prev + 45);
+        setTimeout(() => {
+          const el2 = document.getElementById(`day-section-${selectedDate}`);
+          if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
     }
   };
 
@@ -125,10 +262,12 @@ export const UpcomingTimelineView = () => {
 
   return (
     <div className="upcoming-timeline-container">
-      {/* Top Header Row with Month Navigation & G-Cal Status */}
+      {/* Top Header Row with Month Navigation, Sort & G-Cal Status */}
       <div className="upcoming-header-row">
         <div>
           <h1 className="upcoming-main-title">Upcoming Schedule</h1>
+          
+          {/* Month Navigator */}
           <div className="upcoming-month-controls">
             <button
               type="button"
@@ -159,15 +298,52 @@ export const UpcomingTimelineView = () => {
           </div>
         </div>
 
-        {/* Google Calendar Sync Indicator */}
-        <div className="upcoming-gcal-status-row">
+        {/* Header Right: Layout Toggle, Sort Selector, G-Cal Badge */}
+        <div className="upcoming-header-tools">
+          {/* Sort Selector */}
+          <div className="upcoming-sort-control">
+            <ArrowUpDown size={14} className="sort-icon" />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              className="upcoming-sort-select"
+              title="Sort Upcoming Tasks"
+            >
+              <option value="date_asc">Sort: Nearest Date</option>
+              <option value="priority">Sort: High Priority</option>
+              <option value="gcal_first">Sort: Google Synced</option>
+              <option value="alpha">Sort: Task Name (A-Z)</option>
+            </select>
+          </div>
+
+          {/* View Layout Toggle (Timeline vs Month Grid) */}
+          <div className="upcoming-layout-toggle">
+            <button
+              type="button"
+              className={`layout-btn ${viewLayout === 'timeline' ? 'active' : ''}`}
+              onClick={() => setViewLayout('timeline')}
+              title="Timeline List View"
+            >
+              <List size={15} />
+            </button>
+            <button
+              type="button"
+              className={`layout-btn ${viewLayout === 'month_grid' ? 'active' : ''}`}
+              onClick={() => setViewLayout('month_grid')}
+              title="Month Grid Calendar"
+            >
+              <LayoutGrid size={15} />
+            </button>
+          </div>
+
+          {/* Google Calendar Sync Indicator */}
           {currentUser?.calendarConnected ? (
-            <div className="upcoming-gcal-badge active" title="Google Calendar Real-Time Synced">
+            <div className="upcoming-gcal-badge active" title="Google Calendar Live Synced">
               <svg viewBox="0 0 24 24" width="16" height="16">
                 <path fill="#4285F4" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
                 <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#4285F4">31</text>
               </svg>
-              <span>G-Cal Live Synced</span>
+              <span>G-Cal Live</span>
             </div>
           ) : (
             <button
@@ -185,123 +361,217 @@ export const UpcomingTimelineView = () => {
         </div>
       </div>
 
-      {/* Horizontal Quick Days Strip */}
-      <div className="upcoming-days-strip">
-        {daysList.slice(0, 14).map((d) => (
-          <div
-            key={d.dateStr}
-            className={`upcoming-strip-item ${d.isToday ? 'today-active' : ''} ${d.tasks.length > 0 ? 'has-tasks' : ''}`}
-            onClick={() => {
-              const el = document.getElementById(`day-section-${d.dateStr}`);
-              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
-          >
-            <span className="strip-weekday">{d.dayShort}</span>
-            <span className="strip-daynum">{d.dayNum}</span>
-            {d.tasks.length > 0 && <span className="strip-task-dot"></span>}
-          </div>
-        ))}
+      {/* Quick Date Jump Picker (Allows jumping to ANY future date) */}
+      <div className="upcoming-jump-bar">
+        <span className="jump-label">Jump to any date:</span>
+        <input
+          type="date"
+          min={todayDateStr} // Block past dates for selection
+          value={customJumpDate}
+          onChange={handleJumpToDate}
+          className="upcoming-date-jump-input"
+          title="Jump to date"
+        />
       </div>
 
-      {/* Unlimited Chronological Day-by-Day Timeline List */}
-      <div className="upcoming-days-sections">
-        {daysList.map((day) => (
-          <div
-            key={day.dateStr}
-            id={`day-section-${day.dateStr}`}
-            className={`upcoming-day-block ${day.isToday ? 'today-block' : ''}`}
-          >
-            {/* Day Header */}
-            <div className="upcoming-day-header">
-              <div className="upcoming-day-title-group">
-                <h3 className="upcoming-day-heading">
-                  {day.label}
-                </h3>
-                {day.tasks.length > 0 && (
-                  <span className="day-task-count-pill">{day.tasks.length} {day.tasks.length === 1 ? 'task' : 'tasks'}</span>
-                )}
-              </div>
-
-              {currentUser?.calendarConnected && day.tasks.some(t => t.dueTime) && (
-                <span className="upcoming-gcal-day-tag">
-                  <Clock size={12} />
-                  <span>Events Synced</span>
-                </span>
-              )}
-            </div>
-
-            {/* Task Items for this Day */}
-            <div className="upcoming-tasks-list">
-              {day.tasks.length > 0 ? (
-                day.tasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
-                ))
+      {/* VIEW 1: MONTH GRID CALENDAR */}
+      {viewLayout === 'month_grid' ? (
+        <div className="upcoming-month-grid-wrapper animate-fade-in">
+          <div className="month-grid-weekdays">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div className="month-grid-cells">
+            {monthGridDays.map((cell) => (
+              cell.isBlank ? (
+                <div key={cell.id} className="month-cell blank"></div>
               ) : (
-                <div className="upcoming-day-empty">
-                  <span>No scheduled tasks for this date</span>
+                <div
+                  key={cell.id}
+                  className={`month-cell ${cell.isToday ? 'today-cell' : ''} ${cell.isPast ? 'past-cell' : ''} ${cell.tasks.length > 0 ? 'has-tasks' : ''}`}
+                  onClick={() => {
+                    if (!cell.isPast) {
+                      setViewLayout('timeline');
+                      setTimeout(() => {
+                        const el = document.getElementById(`day-section-${cell.dateStr}`);
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 100);
+                    }
+                  }}
+                >
+                  <div className="cell-header">
+                    <span className="cell-day-num">{cell.dayNum}</span>
+                    {cell.tasks.length > 0 && (
+                      <span className="cell-task-badge">{cell.tasks.length}</span>
+                    )}
+                  </div>
+                  <div className="cell-tasks-preview">
+                    {cell.tasks.slice(0, 2).map(t => (
+                      <div key={t.id} className="cell-task-pill" title={t.title}>
+                        {t.title}
+                      </div>
+                    ))}
+                    {cell.tasks.length > 2 && (
+                      <span className="cell-more-text">+{cell.tasks.length - 2} more</span>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Inline Add Task Row */}
-            {activeDayAdding === day.dateStr ? (
-              <form
-                onSubmit={(e) => handleInlineSubmit(e, day.dateStr)}
-                className="upcoming-inline-add-form animate-fade-in"
+              )
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* VIEW 2: UNLIMITED TIMELINE LIST */
+        <>
+          {/* Horizontal Quick Days Strip */}
+          <div className="upcoming-days-strip">
+            {daysList.slice(0, 14).map((d) => (
+              <div
+                key={d.dateStr}
+                className={`upcoming-strip-item ${d.isToday ? 'today-active' : ''} ${d.tasks.length > 0 ? 'has-tasks' : ''}`}
+                onClick={() => {
+                  const el = document.getElementById(`day-section-${d.dateStr}`);
+                  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
               >
-                <input
-                  type="text"
-                  placeholder="Schedule task for this day..."
-                  value={inlineTaskTitle}
-                  onChange={(e) => setInlineTaskTitle(e.target.value)}
-                  autoFocus
-                  className="upcoming-inline-input"
-                />
-                <input
-                  type="time"
-                  value={inlineTaskTime}
-                  onChange={(e) => setInlineTaskTime(e.target.value)}
-                  className="upcoming-inline-time-input"
-                  title="Due Time"
-                />
-                <div className="upcoming-inline-actions">
-                  <button type="submit" className="upcoming-add-save-btn">
-                    Schedule Task
-                  </button>
+                <span className="strip-weekday">{d.dayShort}</span>
+                <span className="strip-daynum">{d.dayNum}</span>
+                {d.tasks.length > 0 && <span className="strip-task-dot"></span>}
+              </div>
+            ))}
+          </div>
+
+          {/* Chronological Day-by-Day Timeline List */}
+          <div className="upcoming-days-sections">
+            {daysList.map((day) => (
+              <div
+                key={day.dateStr}
+                id={`day-section-${day.dateStr}`}
+                className={`upcoming-day-block ${day.isToday ? 'today-block' : ''}`}
+              >
+                {/* Day Header */}
+                <div className="upcoming-day-header">
+                  <div className="upcoming-day-title-group">
+                    <h3 className="upcoming-day-heading">
+                      {day.label}
+                    </h3>
+                    {day.tasks.length > 0 && (
+                      <span className="day-task-count-pill">{day.tasks.length} {day.tasks.length === 1 ? 'task' : 'tasks'}</span>
+                    )}
+                  </div>
+
+                  {currentUser?.calendarConnected && (
+                    <span className="upcoming-gcal-day-tag">
+                      <Clock size={12} />
+                      <span>Google Calendar Synced</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Task Items for this Day */}
+                <div className="upcoming-tasks-list">
+                  {day.tasks.length > 0 ? (
+                    day.tasks.map((task) => (
+                      <TaskCard key={task.id} task={task} />
+                    ))
+                  ) : (
+                    <div className="upcoming-day-empty">
+                      <span>No scheduled tasks for this date</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Inline Add Task Row (Past dates are blocked) */}
+                {day.isPast ? (
+                  <div className="upcoming-past-date-notice">
+                    <span>Past date · New task additions disabled</span>
+                  </div>
+                ) : activeDayAdding === day.dateStr ? (
+                  <form
+                    onSubmit={(e) => handleInlineSubmit(e, day.dateStr)}
+                    className="upcoming-inline-add-form animate-fade-in"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Schedule task & sync to Google Calendar..."
+                      value={inlineTaskTitle}
+                      onChange={(e) => setInlineTaskTitle(e.target.value)}
+                      autoFocus
+                      className="upcoming-inline-input"
+                    />
+                    <input
+                      type="time"
+                      value={inlineTaskTime}
+                      onChange={(e) => setInlineTaskTime(e.target.value)}
+                      className="upcoming-inline-time-input"
+                      title="Due Time"
+                    />
+                    <div className="upcoming-inline-actions">
+                      <button type="submit" className="upcoming-add-save-btn">
+                        Add & Sync
+                      </button>
+                      <button
+                        type="button"
+                        className="upcoming-add-cancel-btn"
+                        onClick={() => { setActiveDayAdding(null); setInlineTaskTitle(''); }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : (
                   <button
                     type="button"
-                    className="upcoming-add-cancel-btn"
-                    onClick={() => { setActiveDayAdding(null); setInlineTaskTitle(''); }}
+                    className="upcoming-add-day-btn"
+                    onClick={() => setActiveDayAdding(day.dateStr)}
                   >
-                    Cancel
+                    <Plus size={15} />
+                    <span>Add task to {day.dayShort} {day.dayNum}</span>
                   </button>
-                </div>
-              </form>
-            ) : (
-              <button
-                type="button"
-                className="upcoming-add-day-btn"
-                onClick={() => setActiveDayAdding(day.dateStr)}
-              >
-                <Plus size={15} />
-                <span>Add task to {day.dayShort} {day.dayNum}</span>
-              </button>
-            )}
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {/* Infinite Dates / Load More Button */}
-      <div className="upcoming-load-more-section">
-        <button
-          type="button"
-          className="upcoming-load-more-btn"
-          onClick={() => setDaysCount(prev => prev + 14)}
-        >
-          <CalendarDays size={16} />
-          <span>Load Next 2 Weeks of Future Dates ({daysCount + 14} days total)</span>
-        </button>
-      </div>
+          {/* Infinite Dates Load More Button */}
+          <div className="upcoming-load-more-section">
+            <button
+              type="button"
+              className="upcoming-load-more-btn"
+              onClick={() => setDaysCount(prev => prev + 30)}
+            >
+              <CalendarDays size={16} />
+              <span>Load Next 30 Days of Future Dates ({daysCount + 30} days total)</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* PAST DATES & HISTORY SECTION (Keeps past tasks 100% safe & intact) */}
+      {pastTasks.length > 0 && (
+        <div className="upcoming-past-history-section">
+          <button
+            type="button"
+            className="past-history-toggle-btn"
+            onClick={() => setShowPastHistory(!showPastHistory)}
+          >
+            <History size={16} />
+            <span>Past Dates & Completed Tasks ({pastTasks.length} tasks preserved)</span>
+            <ChevronRight size={16} style={{ transform: showPastHistory ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+          </button>
+
+          {showPastHistory && (
+            <div className="past-history-tasks-list animate-fade-in">
+              <p className="past-history-notice">
+                <AlertCircle size={14} />
+                <span>All past completed and scheduled tasks are permanently preserved in your workspace history.</span>
+              </p>
+              {pastTasks.map((t) => (
+                <TaskCard key={t.id} task={t} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
