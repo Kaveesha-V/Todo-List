@@ -4737,13 +4737,17 @@ button:disabled {
 .upcoming-inline-add-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   background: var(--bg-surface-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 16px 18px;
   margin-top: 10px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .inline-form-top-row {
@@ -4752,11 +4756,12 @@ button:disabled {
   gap: 12px;
   flex-wrap: wrap;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .upcoming-inline-input {
   flex: 1;
-  min-width: 260px;
+  min-width: 220px;
   padding: 10px 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -4765,6 +4770,7 @@ button:disabled {
   font-size: 0.9rem;
   outline: none;
   transition: all var(--transition-fast);
+  box-sizing: border-box;
 }
 
 .upcoming-inline-input:focus {
@@ -4776,6 +4782,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .priority-picker-label {
@@ -4835,6 +4842,8 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .time-picker-label-row {
@@ -4897,6 +4906,7 @@ button:disabled {
   gap: 10px;
   padding-top: 8px;
   border-top: 1px dashed var(--border-subtle);
+  flex-wrap: wrap;
 }
 
 .custom-time-label {
@@ -4909,6 +4919,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .easy-time-select {
@@ -4958,13 +4969,16 @@ button:disabled {
   color: #fff;
 }
 
-/* Action Buttons */
+/* Action Buttons (Frame contained) */
 .upcoming-inline-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 6px;
+  width: 100%;
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .upcoming-add-save-btn {
@@ -4980,6 +4994,7 @@ button:disabled {
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
 }
 
 .upcoming-add-save-btn:hover {
@@ -4989,8 +5004,8 @@ button:disabled {
 }
 
 .upcoming-add-cancel-btn {
-  padding: 8px 14px;
-  background: transparent;
+  padding: 8px 16px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
@@ -4998,6 +5013,13 @@ button:disabled {
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.upcoming-add-cancel-btn:hover {
+  background: var(--border-subtle);
+  color: var(--text-primary);
 }
 
 .upcoming-add-cancel-btn:hover {

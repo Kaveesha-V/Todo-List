@@ -634,10 +634,11 @@ export const UpcomingTimelineView = () => {
                             })()}
                             onChange={(e) => {
                               const [curH] = (inlineTaskTime || '09:00').split(':').map(Number);
-                              setInlineTaskTime(`${String(curH).padStart(2, '0')}:${e.target.value}`);
+                              const selectedMin = String(e.target.value).padStart(2, '0');
+                              setInlineTaskTime(`${String(curH).padStart(2, '0')}:${selectedMin}`);
                             }}
                           >
-                            {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
+                            {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
                               <option key={m} value={m}>{m}</option>
                             ))}
                           </select>

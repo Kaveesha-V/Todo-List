@@ -20,6 +20,11 @@ import {
   syncTaskToGoogleCalendarAPI,
   getGoogleCalendarWebLink
 } from '../services/googleCalendar';
+import {
+  playNotificationChime,
+  requestBrowserNotificationPermission,
+  sendBrowserNotification
+} from '../services/liveAlarmService';
 import { getLocalDateString } from '../utils/dateUtils';
 import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
@@ -176,6 +181,64 @@ export const TodoProvider = ({ children }) => {
         setActiveTask(fresh);
       }
     }
+  }, [tasks]);
+
+  // 24/7 Live Task Reminder & Alarm Engine (Chime + In-App Toast + Web Notification)
+  useEffect(() => {
+    requestBrowserNotificationPermission();
+    const alertedSet = new Set();
+
+    const checkReminders = () => {
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMinutes = now.getMinutes();
+      const todayStr = getLocalDateString(now);
+      const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+
+      tasks.forEach(task => {
+        if (task.status === 'done' || !task.dueDate || !task.dueTime) return;
+
+        // Check if task is scheduled for today
+        if (task.dueDate === todayStr) {
+          const [tHour, tMin] = task.dueTime.split(':').map(Number);
+          const taskTimeInMinutes = (tHour || 0) * 60 + (tMin || 0);
+          const diffMinutes = taskTimeInMinutes - currentTimeInMinutes;
+
+          // 1. Due Right Now (within 10 min window)
+          if (diffMinutes <= 0 && diffMinutes >= -15) {
+            const alertKey = `due_${task.id}_${task.dueTime}`;
+            if (!alertedSet.has(alertKey)) {
+              alertedSet.add(alertKey);
+              playNotificationChime('urgent');
+              addToast(`🚨 REMINDER: "${task.title}" is due right now (${task.dueTime})!`, 'warning');
+              sendBrowserNotification(
+                `🚨 Task Reminder: ${task.title}`,
+                `Scheduled for ${task.dueTime}. Priority: ${task.priority.toUpperCase()}`,
+                `task_due_${task.id}`
+              );
+            }
+          }
+          // 2. 30 Minutes Before Reminder
+          else if (diffMinutes === 30 || (diffMinutes <= 30 && diffMinutes >= 28)) {
+            const alertKey = `30m_${task.id}_${task.dueTime}`;
+            if (!alertedSet.has(alertKey)) {
+              alertedSet.add(alertKey);
+              playNotificationChime('standard');
+              addToast(`🔔 30-Min Reminder: "${task.title}" starts in 30 minutes (${task.dueTime})!`, 'info');
+              sendBrowserNotification(
+                `🔔 Upcoming Task in 30 Mins`,
+                `"${task.title}" is scheduled at ${task.dueTime}.`,
+                `task_30m_${task.id}`
+              );
+            }
+          }
+        }
+      });
+    };
+
+    checkReminders();
+    const interval = setInterval(checkReminders, 6000);
+    return () => clearInterval(interval);
   }, [tasks]);
 
   // Add Task (Natural Language or Structured)

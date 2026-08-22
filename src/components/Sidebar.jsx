@@ -159,10 +159,25 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         type="button"
         className="sidebar-add-task-btn"
         onClick={() => {
-          const inputEl = document.querySelector('.nlp-input-field');
-          if (inputEl) {
-            inputEl.focus();
-            inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          if (window.innerWidth <= 768 && onToggle) onToggle();
+          if (activeNavTab === 'upcoming') {
+            const firstAddBtn = document.querySelector('.upcoming-add-day-btn');
+            if (firstAddBtn) {
+              firstAddBtn.click();
+              firstAddBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          } else {
+            const inputEl = document.querySelector('.nlp-text-input') || document.querySelector('input[type="text"]');
+            if (inputEl) {
+              inputEl.focus();
+              inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+              setActiveNavTab('inbox');
+              setTimeout(() => {
+                const el = document.querySelector('.nlp-text-input');
+                if (el) el.focus();
+              }, 100);
+            }
           }
         }}
       >
