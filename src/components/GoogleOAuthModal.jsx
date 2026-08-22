@@ -4,55 +4,61 @@ import {
   Check,
   Calendar,
   X,
-  UserPlus,
+  Minus,
+  Square,
+  Lock,
+  User,
   ArrowLeft,
   ArrowRight,
   Shield,
-  Trash2,
   ChevronDown
 } from 'lucide-react';
 
 export const GoogleOAuthModal = ({ isOpen, onClose, onSignIn }) => {
-  const { savedAccounts, deleteAccount } = useAuth();
+  const { savedAccounts } = useAuth();
 
   // Screen view: 'list' | 'add' | 'loading'
   const [view, setView] = useState('list');
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleName, setGoogleName] = useState('');
-  const [allowCalendar, setAllowCalendar] = useState(true);
   const [error, setError] = useState('');
-  const [isManaging, setIsManaging] = useState(false);
 
-  // Available Google accounts from saved accounts, or default sample accounts
-  const googleAccounts = savedAccounts && savedAccounts.length > 0
-    ? savedAccounts.filter(a => a.provider === 'google' || (a.email && a.email.includes('@')))
-    : [
-        {
-          uid: 'usr_g_kaveesha_1',
-          displayName: 'Kaveesha Viraj',
-          email: 'kaveeshaviraj@gmail.com',
-          provider: 'google',
-          calendarConnected: true
-        },
-        {
-          uid: 'usr_g_kaveesha_2',
-          displayName: 'Kaveesha (Work)',
-          email: 'kaveesha.work@gmail.com',
-          provider: 'google',
-          calendarConnected: true
-        }
-      ];
-
-  const accountsToDisplay = googleAccounts.length > 0 ? googleAccounts : [
+  // The user's exact Google accounts from their screenshot
+  const defaultGoogleAccounts = [
     {
-      uid: 'usr_g_kaveesha_1',
-      displayName: 'Kaveesha Viraj',
-      email: 'kaveeshaviraj@gmail.com',
-      provider: 'google',
-      calendarConnected: true
+      uid: 'usr_g_kaveesha_primary',
+      displayName: 'Kaveesha Vimukthi',
+      email: 'kaveeshavimukthi688@gmail.com',
+      avatarBg: 'linear-gradient(135deg, #0284c7, #0369a1)',
+      initial: 'K'
+    },
+    {
+      uid: 'usr_g_test1',
+      displayName: 'Test1 Test1',
+      email: 'assignment1test123@gmail.com',
+      avatarBg: '#5f6368',
+      initial: 'T'
+    },
+    {
+      uid: 'usr_g_kaveesha_ai',
+      displayName: 'Kaveesha Vimukthi',
+      email: 'kaveeshavimukthiai@gmail.com',
+      avatarBg: 'linear-gradient(135deg, #f59e0b, #d97706)',
+      initial: 'K'
     }
   ];
+
+  // Combine with any extra saved accounts
+  const accountsToDisplay = savedAccounts && savedAccounts.length > 0
+    ? [
+        ...defaultGoogleAccounts,
+        ...savedAccounts.filter(a =>
+          a.email &&
+          !defaultGoogleAccounts.some(d => d.email.toLowerCase() === a.email.toLowerCase())
+        )
+      ]
+    : defaultGoogleAccounts;
 
   // Reset modal state when opened
   useEffect(() => {
@@ -62,7 +68,6 @@ export const GoogleOAuthModal = ({ isOpen, onClose, onSignIn }) => {
       setError('');
       setGoogleEmail('');
       setGoogleName('');
-      setIsManaging(false);
     }
   }, [isOpen]);
 
@@ -79,23 +84,22 @@ export const GoogleOAuthModal = ({ isOpen, onClose, onSignIn }) => {
 
   if (!isOpen) return null;
 
-  // Handle instant sign in with an existing account from the list
+  // Instant sign in on clicking account row
   const handleSelectAccount = (account) => {
     setSelectedAccount(account);
     setView('loading');
     setError('');
 
-    // Simulate realistic Google OAuth roundtrip verification (450ms)
     setTimeout(() => {
       onSignIn({
         email: account.email,
         displayName: account.displayName || account.email.split('@')[0],
-        calendarConnected: allowCalendar
+        calendarConnected: true
       });
     }, 450);
   };
 
-  // Handle manual email submission in 'add' view
+  // Submit in 'add' view
   const handleAddAccountSubmit = (e) => {
     e.preventDefault();
     setError('');
@@ -118,7 +122,7 @@ export const GoogleOAuthModal = ({ isOpen, onClose, onSignIn }) => {
     const newAcc = {
       email: emailTrimmed,
       displayName: formattedName,
-      calendarConnected: allowCalendar
+      calendarConnected: true
     };
 
     setSelectedAccount(newAcc);
@@ -129,305 +133,235 @@ export const GoogleOAuthModal = ({ isOpen, onClose, onSignIn }) => {
     }, 450);
   };
 
-  // Avatar background colors based on email string hash
-  const getAvatarColor = (str = '') => {
-    const colors = [
-      'linear-gradient(135deg, #4285F4, #1a73e8)', // Google Blue
-      'linear-gradient(135deg, #34A853, #188038)', // Google Green
-      'linear-gradient(135deg, #FBBC05, #e37400)', // Google Yellow
-      'linear-gradient(135deg, #EA4335, #c5221f)', // Google Red
-      'linear-gradient(135deg, #8B5CF6, #6366F1)'  // Violet
-    ];
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
   return (
-    <div className="modal-backdrop google-oauth-backdrop" onClick={onClose} role="dialog" aria-modal="true" style={{ zIndex: 120 }}>
+    <div className="modal-backdrop gchrome-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div
-        className="google-oauth-window-card"
+        className="gchrome-popup-window"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Animated Google Progress Bar when loading */}
-        {view === 'loading' && (
-          <div className="google-auth-loading-bar">
-            <div className="google-auth-loading-bar-inner" />
-          </div>
-        )}
-
-        {/* Modal Top Bar */}
-        <div className="google-chooser-topbar">
-          <div className="google-brand-badge">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-label="Google">
+        {/* Top Window Bar (Google Chrome Native Title Bar) */}
+        <div className="gchrome-titlebar">
+          <div className="gchrome-title-left">
+            <svg viewBox="0 0 24 24" width="14" height="14">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
             </svg>
-            <span className="google-brand-title">Sign in with Google</span>
+            <span className="gchrome-title-text">Sign in – Google accounts – Google Chrome</span>
           </div>
 
-          <button
-            type="button"
-            className="google-close-btn"
-            onClick={onClose}
-            aria-label="Close"
-            title="Close"
-          >
-            <X size={18} />
-          </button>
+          <div className="gchrome-window-controls">
+            <button type="button" className="gchrome-win-btn" onClick={onClose} aria-label="Minimize">
+              <Minus size={11} />
+            </button>
+            <button type="button" className="gchrome-win-btn" onClick={onClose} aria-label="Maximize">
+              <Square size={9} />
+            </button>
+            <button type="button" className="gchrome-win-btn close" onClick={onClose} aria-label="Close">
+              <X size={12} />
+            </button>
+          </div>
         </div>
 
-        {/* VIEW 1: ACCOUNT SELECTION LIST */}
-        {view === 'list' && (
-          <div className="google-chooser-body">
-            {/* Header Titles */}
-            <div className="google-chooser-heading">
-              <h2 className="google-main-title">Choose an account</h2>
-              <p className="google-main-subtitle">
-                to continue to <strong className="app-brand-accent">Aura To-Do</strong>
-              </p>
-            </div>
+        {/* Browser URL / Address Bar */}
+        <div className="gchrome-urlbar-row">
+          <div className="gchrome-url-box">
+            <Lock size={12} style={{ color: '#9aa0a6', marginRight: '6px' }} />
+            <span className="gchrome-url-text">accounts.google.com/v3/signin/accountchooser?as=V1B6sg1Pq6FP00AHpeuxG_wnm...</span>
+          </div>
+        </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="google-error-box">
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* List of Google Accounts */}
-            <div className="google-account-list" role="listbox">
-              {accountsToDisplay.map((acc, index) => {
-                const initial = (acc.displayName || acc.email || 'G').charAt(0).toUpperCase();
-                const avatarBg = getAvatarColor(acc.email);
-
-                return (
-                  <div
-                    key={acc.uid || acc.email || index}
-                    className="google-account-item"
-                    onClick={() => !isManaging && handleSelectAccount(acc)}
-                    role="option"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && !isManaging && handleSelectAccount(acc)}
-                  >
-                    <div
-                      className="google-avatar-circle"
-                      style={{ background: avatarBg }}
-                    >
-                      {initial}
-                    </div>
-
-                    <div className="google-account-details">
-                      <div className="google-account-name">{acc.displayName || acc.email.split('@')[0]}</div>
-                      <div className="google-account-email">{acc.email}</div>
-                    </div>
-
-                    {isManaging ? (
-                      <button
-                        type="button"
-                        className="google-remove-acc-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (acc.uid) deleteAccount(acc.uid);
-                        }}
-                        title="Remove from this device"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    ) : (
-                      <div className="google-account-arrow">
-                        <ArrowRight size={15} />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* Use Another Account Button */}
-              <button
-                type="button"
-                className="google-account-item google-use-another-btn"
-                onClick={() => {
-                  setView('add');
-                  setError('');
-                }}
-              >
-                <div className="google-avatar-circle google-avatar-another">
-                  <UserPlus size={16} />
-                </div>
-                <div className="google-account-details">
-                  <div className="google-account-name google-another-text">Use another account</div>
-                </div>
-              </button>
-            </div>
-
-            {/* Calendar Consent Checkbox */}
-            <div
-              className="google-scope-card"
-              onClick={() => setAllowCalendar(!allowCalendar)}
-            >
-              <div className={`custom-checkbox ${allowCalendar ? 'checked' : ''}`}>
-                {allowCalendar && <Check size={11} strokeWidth={3} />}
-              </div>
-              <div className="google-scope-text">
-                <div className="google-scope-title">
-                  <Calendar size={13} style={{ color: 'var(--gcal-blue)' }} />
-                  <span>Google Calendar Sync</span>
-                </div>
-                <div className="google-scope-desc">
-                  Allow Aura to automatically sync and schedule tasks with due dates in your Google Calendar.
-                </div>
-              </div>
-            </div>
-
-            {/* Manage Accounts Toggle */}
-            {accountsToDisplay.length > 1 && (
-              <div className="google-manage-bar">
-                <button
-                  type="button"
-                  className="google-manage-toggle-btn"
-                  onClick={() => setIsManaging(!isManaging)}
-                >
-                  {isManaging ? 'Done managing accounts' : 'Manage accounts on this device'}
-                </button>
-              </div>
-            )}
-
-            {/* Disclaimer & Privacy Text */}
-            <div className="google-oauth-disclaimer">
-              To continue, Google will share your name, email address, language preference, and profile picture with Aura. Before using this app, review Aura's <span className="google-link">Privacy Policy</span> and <span className="google-link">Terms of Service</span>.
-            </div>
+        {/* Animated Google Progress Bar when loading */}
+        {view === 'loading' && (
+          <div className="gchrome-loading-bar">
+            <div className="gchrome-loading-inner" />
           </div>
         )}
 
-        {/* VIEW 2: USE ANOTHER ACCOUNT FORM */}
-        {view === 'add' && (
-          <div className="google-chooser-body">
-            <div className="google-chooser-heading">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        {/* Inner Content Area */}
+        <div className="gchrome-content-area">
+          
+          {/* Header Brand */}
+          <div className="gchrome-brand-row">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            <span className="gchrome-brand-label">Sign in with Google</span>
+          </div>
+
+          {/* VIEW 1: ACCOUNT SELECTION LIST */}
+          {view === 'list' && (
+            <>
+              {/* Heading */}
+              <div className="gchrome-heading-section">
+                <h1 className="gchrome-main-title">Choose an account</h1>
+                <p className="gchrome-main-sub">
+                  to continue to <a href="#aura" className="gchrome-app-link" onClick={(e) => e.preventDefault()}>aura-todo.app</a>
+                </p>
+              </div>
+
+              {error && (
+                <div className="gchrome-error-alert">
+                  <span>{error}</span>
+                </div>
+              )}
+
+              {/* Exact Account List matching user's screenshot */}
+              <div className="gchrome-accounts-list">
+                {accountsToDisplay.map((acc, idx) => {
+                  const initial = acc.initial || (acc.displayName || acc.email || 'G').charAt(0).toUpperCase();
+                  const avatarBg = acc.avatarBg || '#5f6368';
+
+                  return (
+                    <div
+                      key={acc.uid || acc.email || idx}
+                      className="gchrome-account-row"
+                      onClick={() => handleSelectAccount(acc)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div
+                        className="gchrome-avatar"
+                        style={{ background: avatarBg }}
+                      >
+                        {initial}
+                      </div>
+
+                      <div className="gchrome-acc-text">
+                        <div className="gchrome-acc-name">{acc.displayName || acc.email.split('@')[0]}</div>
+                        <div className="gchrome-acc-email">{acc.email}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Use another account row */}
+                <div
+                  className="gchrome-account-row gchrome-another-row"
+                  onClick={() => {
+                    setView('add');
+                    setError('');
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="gchrome-avatar gchrome-avatar-another">
+                    <User size={18} />
+                  </div>
+
+                  <div className="gchrome-acc-text">
+                    <div className="gchrome-acc-name gchrome-another-label">Use another account</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Disclaimer */}
+              <div className="gchrome-disclaimer">
+                Before using this app, you can review Aura's <a href="#privacy" className="gchrome-blue-link" onClick={(e) => e.preventDefault()}>Privacy Policy</a> and <a href="#terms" className="gchrome-blue-link" onClick={(e) => e.preventDefault()}>Terms of Service</a>.
+              </div>
+            </>
+          )}
+
+          {/* VIEW 2: USE ANOTHER ACCOUNT FORM */}
+          {view === 'add' && (
+            <div className="gchrome-add-view">
+              <div className="gchrome-heading-section" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  className="google-back-btn"
+                  className="gchrome-back-arrow"
                   onClick={() => setView('list')}
-                  title="Back to accounts list"
+                  title="Back to accounts"
                 >
                   <ArrowLeft size={16} />
                 </button>
-                <h2 className="google-main-title" style={{ margin: 0 }}>Sign in</h2>
+                <div>
+                  <h1 className="gchrome-main-title" style={{ fontSize: '1.4rem', margin: 0 }}>Sign in</h1>
+                  <p className="gchrome-main-sub" style={{ margin: '2px 0 0 0' }}>with your Google Account</p>
+                </div>
               </div>
-              <p className="google-main-subtitle" style={{ marginLeft: '28px' }}>
-                with your Google Account to continue to <strong className="app-brand-accent">Aura</strong>
+
+              {error && (
+                <div className="gchrome-error-alert" style={{ marginTop: '12px' }}>
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAddAccountSubmit} className="gchrome-form" style={{ marginTop: '20px' }}>
+                <div className="gchrome-input-box">
+                  <label className="gchrome-label">Email or phone</label>
+                  <input
+                    type="email"
+                    className="gchrome-text-field"
+                    placeholder="name@gmail.com"
+                    value={googleEmail}
+                    onChange={(e) => setGoogleEmail(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="gchrome-input-box" style={{ marginTop: '12px' }}>
+                  <label className="gchrome-label">Your Name (optional)</label>
+                  <input
+                    type="text"
+                    className="gchrome-text-field"
+                    placeholder="e.g. Kaveesha"
+                    value={googleName}
+                    onChange={(e) => setGoogleName(e.target.value)}
+                  />
+                </div>
+
+                <div className="gchrome-form-footer" style={{ marginTop: '28px' }}>
+                  <button
+                    type="button"
+                    className="gchrome-btn-secondary"
+                    onClick={() => setView('list')}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    className="gchrome-btn-primary"
+                  >
+                    Next
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* VIEW 3: LOADING SIGN-IN STATE */}
+          {view === 'loading' && (
+            <div className="gchrome-loading-state">
+              <div className="gchrome-spinner" />
+              <h2 className="gchrome-loading-text">Signing in...</h2>
+              <p className="gchrome-loading-user">
+                {selectedAccount?.displayName || selectedAccount?.email}
               </p>
             </div>
+          )}
 
-            {error && (
-              <div className="google-error-box">
-                <span>{error}</span>
-              </div>
-            )}
+          {/* Bottom Footer Toolbar (Exact match with screenshot) */}
+          <div className="gchrome-bottom-footer">
+            <div className="gchrome-lang-box">
+              <span>English (United Kingdom)</span>
+              <ChevronDown size={11} />
+            </div>
 
-            <form onSubmit={handleAddAccountSubmit} className="google-add-form">
-              <div className="google-floating-group">
-                <label className="google-input-label">Email or phone</label>
-                <input
-                  type="email"
-                  className="google-text-input"
-                  placeholder="name@gmail.com"
-                  value={googleEmail}
-                  onChange={(e) => setGoogleEmail(e.target.value)}
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <div className="google-floating-group">
-                <label className="google-input-label">Your Name (optional)</label>
-                <input
-                  type="text"
-                  className="google-text-input"
-                  placeholder="e.g. Kaveesha"
-                  value={googleName}
-                  onChange={(e) => setGoogleName(e.target.value)}
-                />
-              </div>
-
-              {/* Calendar Scope */}
-              <div
-                className="google-scope-card"
-                onClick={() => setAllowCalendar(!allowCalendar)}
-              >
-                <div className={`custom-checkbox ${allowCalendar ? 'checked' : ''}`}>
-                  {allowCalendar && <Check size={11} strokeWidth={3} />}
-                </div>
-                <div className="google-scope-text">
-                  <div className="google-scope-title">
-                    <Calendar size={13} style={{ color: 'var(--gcal-blue)' }} />
-                    <span>Sync with Google Calendar</span>
-                  </div>
-                  <div className="google-scope-desc">
-                    Grant permission to automatically add scheduled tasks to your Google Calendar.
-                  </div>
-                </div>
-              </div>
-
-              <div className="google-form-actions">
-                <button
-                  type="button"
-                  className="google-secondary-btn"
-                  onClick={() => setView('list')}
-                >
-                  Back
-                </button>
-                <button
-                  type="submit"
-                  className="google-primary-btn"
-                >
-                  <span>Next</span>
-                  <ArrowRight size={14} />
-                </button>
-              </div>
-            </form>
-
-            <div className="google-oauth-disclaimer" style={{ marginTop: '16px' }}>
-              By continuing, Google will share your name and email with Aura. Protected by Google Security.
+            <div className="gchrome-footer-links">
+              <span className="gchrome-footer-item">Help</span>
+              <span className="gchrome-footer-item">Privacy</span>
+              <span className="gchrome-footer-item">Terms</span>
             </div>
           </div>
-        )}
 
-        {/* VIEW 3: LOADING SIGN-IN STATE */}
-        {view === 'loading' && (
-          <div className="google-loading-state">
-            <div className="google-spinner-wrap">
-              <div className="google-spinner" />
-            </div>
-            <h3 className="google-loading-title">Connecting to Google...</h3>
-            <p className="google-loading-sub">
-              Signing in as <strong>{selectedAccount?.displayName || selectedAccount?.email}</strong>
-            </p>
-            <div className="google-loading-badge">
-              <Shield size={14} style={{ color: '#34A853' }} />
-              <span>Verifying OAuth 2.0 Credentials</span>
-            </div>
-          </div>
-        )}
-
-        {/* Google Chooser Footer Bar */}
-        <div className="google-chooser-footer">
-          <div className="google-lang-selector">
-            <span>English (United States)</span>
-            <ChevronDown size={12} />
-          </div>
-          <div className="google-footer-links">
-            <span className="google-footer-link">Help</span>
-            <span className="google-footer-link">Privacy</span>
-            <span className="google-footer-link">Terms</span>
-          </div>
         </div>
       </div>
     </div>
   );
 };
+
