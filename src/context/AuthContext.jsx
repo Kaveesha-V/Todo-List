@@ -26,7 +26,25 @@ export const AuthProvider = ({ children }) => {
   const [savedAccounts, setSavedAccounts] = useState(() => {
     const accounts = loadStoredAccounts();
     // Filter out dummy generated emails
-    const clean = accounts.filter(a => !/^user_\d+@gmail\.com$/i.test(a.email));
+    const clean = (accounts || []).filter(a => !/^user_\d+@gmail\.com$/i.test(a.email));
+    if (clean.length === 0) {
+      const defaultAccs = [
+        {
+          uid: 'usr_g_kaveesha_1',
+          email: 'kaveeshaviraj@gmail.com',
+          displayName: 'Kaveesha Viraj',
+          photoURL: null,
+          provider: 'google',
+          calendarConnected: true,
+          lastCalendarSync: "Just now",
+          reminderOffsets: [10, 60],
+          createdAt: new Date().toISOString(),
+          lastLogin: new Date().toISOString()
+        }
+      ];
+      saveStoredAccounts(defaultAccs);
+      return defaultAccs;
+    }
     saveStoredAccounts(clean);
     return clean;
   });
