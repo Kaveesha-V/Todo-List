@@ -4732,142 +4732,54 @@ button:disabled {
 }
 
 /* ===================================================================
-   Intuitive Ongoing Time Picker Styles
+   Upcoming Inline Add Task Form Layout & Balanced Alignment
    =================================================================== */
-.inline-form-top-row {
-  margin-bottom: 10px;
-}
-
-.inline-time-picker-panel {
+.upcoming-inline-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   background: var(--bg-surface-subtle);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 16px;
+  margin-top: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
-.time-picker-label-row {
+.inline-form-top-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.time-picker-heading {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-}
-
-.time-picker-heading strong {
-  color: var(--primary);
-  font-family: ui-monospace, monospace;
-}
-
-.time-presets-chips {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.time-chip-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-full);
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.time-chip-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.time-chip-btn.active-pulse {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.4);
-  color: #10B981;
-}
-
-.time-selects-custom-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.easy-time-select {
+.upcoming-inline-input {
+  flex: 1;
+  min-width: 260px;
+  padding: 10px 14px;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   color: var(--text-primary);
-  font-size: 0.84rem;
-  font-weight: 700;
-  padding: 4px 8px;
+  font-size: 0.9rem;
   outline: none;
-  cursor: pointer;
-  font-family: ui-monospace, monospace;
-}
-
-.easy-time-select option {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.time-colon {
-  font-weight: 800;
-  color: var(--text-tertiary);
-}
-
-.am-pm-toggle-btns {
-  display: flex;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.am-pm-btn {
-  padding: 4px 10px;
-  background: transparent;
-  border: none;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.am-pm-btn.active {
-  background: var(--primary);
-  color: #fff;
+.upcoming-inline-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-/* ===================================================================
-   Priority Picker Buttons & Date Highlight
-   =================================================================== */
 .inline-priority-picker-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .priority-picker-label {
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
 }
@@ -4881,11 +4793,11 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-subtle);
   background: var(--bg-surface);
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
@@ -4912,6 +4824,185 @@ button:disabled {
   background: rgba(59, 130, 246, 0.15);
   border-color: #3B82F6;
   color: #3B82F6;
+}
+
+/* Time Picker Panel Balanced Alignment */
+.inline-time-picker-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.time-picker-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.time-picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.time-picker-heading strong {
+  color: var(--primary);
+  font-family: ui-monospace, monospace;
+}
+
+.time-presets-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.time-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.time-chip-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.time-chip-btn.active-pulse {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10B981;
+}
+
+.time-custom-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.custom-time-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.time-selects-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.easy-time-select {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+
+.easy-time-select option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.time-colon {
+  font-weight: 800;
+  color: var(--text-tertiary);
+}
+
+.am-pm-toggle-btns {
+  display: flex;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.am-pm-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.am-pm-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Action Buttons */
+.upcoming-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.upcoming-add-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.upcoming-add-save-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.upcoming-add-cancel-btn {
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.upcoming-add-cancel-btn:hover {
+  background: var(--bg-surface-subtle);
+  color: var(--text-primary);
 }
 
 .highlight-glow {

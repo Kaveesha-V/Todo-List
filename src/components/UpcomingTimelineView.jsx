@@ -506,47 +506,47 @@ export const UpcomingTimelineView = () => {
                     onSubmit={(e) => handleInlineSubmit(e, day.dateStr)}
                     className="upcoming-inline-add-form animate-fade-in"
                   >
+                    {/* Top Row: Task Title + Priority Selector */}
                     <div className="inline-form-top-row">
                       <input
                         type="text"
-                        placeholder="Task name (e.g. Linux Video, Client Meeting)..."
+                        placeholder="What do you need to do? (e.g. Linux Video, Client Meeting)..."
                         value={inlineTaskTitle}
                         onChange={(e) => setInlineTaskTitle(e.target.value)}
                         autoFocus
                         className="upcoming-inline-input"
                       />
-                    </div>
 
-                    {/* Priority Selector Row */}
-                    <div className="inline-priority-picker-row">
-                      <span className="priority-picker-label">Priority:</span>
-                      <div className="priority-picker-buttons">
-                        <button
-                          type="button"
-                          className={`p-btn p-high ${inlineTaskPriority === 'high' ? 'active' : ''}`}
-                          onClick={() => setInlineTaskPriority('high')}
-                        >
-                          <Flame size={12} />
-                          <span>High</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`p-btn p-med ${inlineTaskPriority === 'medium' ? 'active' : ''}`}
-                          onClick={() => setInlineTaskPriority('medium')}
-                        >
-                          <span>Medium</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={`p-btn p-low ${inlineTaskPriority === 'low' ? 'active' : ''}`}
-                          onClick={() => setInlineTaskPriority('low')}
-                        >
-                          <span>Low</span>
-                        </button>
+                      <div className="inline-priority-picker-row">
+                        <span className="priority-picker-label">Priority:</span>
+                        <div className="priority-picker-buttons">
+                          <button
+                            type="button"
+                            className={`p-btn p-high ${inlineTaskPriority === 'high' ? 'active' : ''}`}
+                            onClick={() => setInlineTaskPriority('high')}
+                          >
+                            <Flame size={12} />
+                            <span>High</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`p-btn p-med ${inlineTaskPriority === 'medium' ? 'active' : ''}`}
+                            onClick={() => setInlineTaskPriority('medium')}
+                          >
+                            <span>Medium</span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`p-btn p-low ${inlineTaskPriority === 'low' ? 'active' : ''}`}
+                            onClick={() => setInlineTaskPriority('low')}
+                          >
+                            <span>Low</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Intuitive Ongoing Time Picker Controls */}
+                    {/* Middle: Intuitive Ongoing Time Picker Controls */}
                     <div className="inline-time-picker-panel">
                       <div className="time-picker-label-row">
                         <span className="time-picker-heading">
@@ -600,77 +600,82 @@ export const UpcomingTimelineView = () => {
                       </div>
 
                       {/* Custom Time Selector Selects (Easy 12-Hour Dropdowns) */}
-                      <div className="time-selects-custom-row">
-                        <select
-                          className="easy-time-select"
-                          value={(() => {
-                            const [h] = (inlineTaskTime || '09:00').split(':').map(Number);
-                            const h12 = h % 12 || 12;
-                            return String(h12).padStart(2, '0');
-                          })()}
-                          onChange={(e) => {
-                            const newH12 = parseInt(e.target.value, 10);
-                            const [curH, curM] = (inlineTaskTime || '09:00').split(':').map(Number);
-                            const isPM = curH >= 12;
-                            let h24 = newH12 % 12;
-                            if (isPM) h24 += 12;
-                            setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
-                          }}
-                        >
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
-                            <option key={h} value={String(h).padStart(2, '0')}>
-                              {h}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="time-colon">:</span>
-                        <select
-                          className="easy-time-select"
-                          value={(() => {
-                            const [, m] = (inlineTaskTime || '09:00').split(':').map(Number);
-                            return String(m || 0).padStart(2, '0');
-                          })()}
-                          onChange={(e) => {
-                            const [curH] = (inlineTaskTime || '09:00').split(':').map(Number);
-                            setInlineTaskTime(`${String(curH).padStart(2, '0')}:${e.target.value}`);
-                          }}
-                        >
-                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
-                            <option key={m} value={m}>{m}</option>
-                          ))}
-                        </select>
-                        
-                        {/* AM/PM Toggle */}
-                        <div className="am-pm-toggle-btns">
-                          <button
-                            type="button"
-                            className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) < 12 ? 'active' : ''}`}
-                            onClick={() => {
-                              const [curH, curM] = inlineTaskTime.split(':').map(Number);
-                              const h24 = curH >= 12 ? curH - 12 : curH;
+                      <div className="time-custom-selector-container">
+                        <span className="custom-time-label">Custom:</span>
+                        <div className="time-selects-custom-row">
+                          <select
+                            className="easy-time-select"
+                            value={(() => {
+                              const [h] = (inlineTaskTime || '09:00').split(':').map(Number);
+                              const h12 = h % 12 || 12;
+                              return String(h12).padStart(2, '0');
+                            })()}
+                            onChange={(e) => {
+                              const newH12 = parseInt(e.target.value, 10);
+                              const [curH, curM] = (inlineTaskTime || '09:00').split(':').map(Number);
+                              const isPM = curH >= 12;
+                              let h24 = newH12 % 12;
+                              if (isPM) h24 += 12;
                               setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
                             }}
                           >
-                            AM
-                          </button>
-                          <button
-                            type="button"
-                            className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) >= 12 ? 'active' : ''}`}
-                            onClick={() => {
-                              const [curH, curM] = inlineTaskTime.split(':').map(Number);
-                              const h24 = curH < 12 ? curH + 12 : curH;
-                              setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                              <option key={h} value={String(h).padStart(2, '0')}>
+                                {h}
+                              </option>
+                            ))}
+                          </select>
+                          <span className="time-colon">:</span>
+                          <select
+                            className="easy-time-select"
+                            value={(() => {
+                              const [, m] = (inlineTaskTime || '09:00').split(':').map(Number);
+                              return String(m || 0).padStart(2, '0');
+                            })()}
+                            onChange={(e) => {
+                              const [curH] = (inlineTaskTime || '09:00').split(':').map(Number);
+                              setInlineTaskTime(`${String(curH).padStart(2, '0')}:${e.target.value}`);
                             }}
                           >
-                            PM
-                          </button>
+                            {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
+                              <option key={m} value={m}>{m}</option>
+                            ))}
+                          </select>
+                          
+                          {/* AM/PM Toggle */}
+                          <div className="am-pm-toggle-btns">
+                            <button
+                              type="button"
+                              className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) < 12 ? 'active' : ''}`}
+                              onClick={() => {
+                                const [curH, curM] = inlineTaskTime.split(':').map(Number);
+                                const h24 = curH >= 12 ? curH - 12 : curH;
+                                setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                              }}
+                            >
+                              AM
+                            </button>
+                            <button
+                              type="button"
+                              className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) >= 12 ? 'active' : ''}`}
+                              onClick={() => {
+                                const [curH, curM] = inlineTaskTime.split(':').map(Number);
+                                const h24 = curH < 12 ? curH + 12 : curH;
+                                setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                              }}
+                            >
+                              PM
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
 
+                    {/* Bottom: Action Buttons */}
                     <div className="upcoming-inline-actions">
                       <button type="submit" className="upcoming-add-save-btn">
-                        Add & Sync Task
+                        <CheckCircle2 size={14} />
+                        <span>Add & Auto-Sync Task</span>
                       </button>
                       <button
                         type="button"
