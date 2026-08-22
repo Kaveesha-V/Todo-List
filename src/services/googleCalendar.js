@@ -47,7 +47,9 @@ export const syncTaskToGoogleCalendarAPI = async (accessToken, task) => {
     };
   }
 
-  const [year, month, day] = (task.dueDate || new Date().toISOString().split('T')[0]).split('-');
+  const localToday = new Date();
+  const defaultDate = `${localToday.getFullYear()}-${String(localToday.getMonth() + 1).padStart(2, '0')}-${String(localToday.getDate()).padStart(2, '0')}`;
+  const [year, month, day] = (task.dueDate || defaultDate).split('-');
   const [hour, minute] = (task.dueTime || '09:00').split(':');
   
   const startDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
@@ -55,7 +57,7 @@ export const syncTaskToGoogleCalendarAPI = async (accessToken, task) => {
 
   const eventPayload = {
     summary: task.title,
-    description: task.description || `Aura AI To-Do Task\nPriority: ${task.priority || 'medium'}`,
+    description: task.description || `Aura AI To-Do Task\nScheduled Time: ${task.dueTime || '09:00'}\nPriority: ${task.priority || 'medium'}`,
     start: {
       dateTime: startDate.toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -67,8 +69,9 @@ export const syncTaskToGoogleCalendarAPI = async (accessToken, task) => {
     reminders: {
       useDefault: false,
       overrides: [
-        { method: 'popup', minutes: 10 },
-        { method: 'popup', minutes: 60 }
+        { method: 'email', minutes: 30 }, // Gmail email reminder 30 minutes before task!
+        { method: 'popup', minutes: 30 }, // 30-min popup alert
+        { method: 'popup', minutes: 10 }  // 10-min popup alert
       ]
     }
   };

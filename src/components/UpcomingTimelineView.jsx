@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { useAuth } from '../context/AuthContext';
 import { syncTaskToGoogleCalendarAPI, getGoogleCalendarWebLink } from '../services/googleCalendar';
-import { getOngoingTimeString } from '../utils/dateUtils';
+import { getOngoingTimeString, getLocalDateString } from '../utils/dateUtils';
 import { TaskCard } from './TaskCard';
 import {
   Calendar,
@@ -42,9 +42,9 @@ export const UpcomingTimelineView = () => {
   const [showPastHistory, setShowPastHistory] = useState(false);
   const [customJumpDate, setCustomJumpDate] = useState('');
 
-  // Date Anchors
+  // Date Anchors (Accurate Local Timezone)
   const today = new Date();
-  const todayDateStr = today.toISOString().split('T')[0];
+  const todayDateStr = getLocalDateString(today);
   const anchorDate = new Date(today.getFullYear(), today.getMonth() + selectedMonthOffset, 1);
 
   // When opening add task, refresh to latest ongoing time
@@ -116,7 +116,7 @@ export const UpcomingTimelineView = () => {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
 
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       taskDatesSet.delete(dateStr);
 
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
@@ -125,9 +125,8 @@ export const UpcomingTimelineView = () => {
       const monthShort = d.toLocaleDateString('en-US', { month: 'short' });
 
       const isToday = dateStr === todayDateStr;
-      const tomorrow = new Date();
-      tomorrow.setDate(today.getDate() + 1);
-      const isTomorrow = dateStr === tomorrow.toISOString().split('T')[0];
+      const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      const isTomorrow = dateStr === getLocalDateString(tomorrow);
 
       let label = `${dayNum} ${monthShort} · ${dayName}`;
       if (isToday) label = `${dayNum} ${monthShort} · Today · ${dayName}`;
@@ -192,7 +191,7 @@ export const UpcomingTimelineView = () => {
 
     for (let day = 1; day <= totalDaysInMonth; day++) {
       const d = new Date(year, month, day);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateString(d);
       const isToday = dateStr === todayDateStr;
       const isPast = dateStr < todayDateStr;
       const dayTasks = upcomingTasks.filter(t => t.dueDate === dateStr);

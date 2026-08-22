@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
+import { getLocalDateString } from '../utils/dateUtils';
 import {
   Inbox,
   Calendar,
@@ -40,7 +41,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
 
   // Calculate task counts
   const inboxCount = tasks.filter(t => !t.completed).length;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const todayCount = tasks.filter(t => !t.completed && t.dueDate === todayStr).length;
 
   // Setup completion

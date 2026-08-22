@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { TaskCard } from './TaskCard';
+import { getLocalDateString } from '../utils/dateUtils';
 import {
   Tag,
   Filter,
@@ -11,7 +12,8 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  Hash
+  Hash,
+  CheckCircle2
 } from 'lucide-react';
 
 export const FiltersAndLabelsView = () => {
@@ -24,13 +26,14 @@ export const FiltersAndLabelsView = () => {
   if (!allTags.includes('work')) allTags.push('work');
   if (!allTags.includes('personal')) allTags.push('personal');
   if (!allTags.includes('urgent')) allTags.push('urgent');
+  if (!allTags.includes('study')) allTags.push('study');
 
   // Filter tasks based on selection
   let displayedTasks = [];
   let viewTitle = "";
 
   if (selectedFilter === 'priority1') {
-    displayedTasks = tasks.filter(t => t.priority === 'high' || t.priority === 'urgent');
+    displayedTasks = tasks.filter(t => t.priority === 'high');
     viewTitle = "Priority 1 (High)";
   } else if (selectedFilter === 'priority2') {
     displayedTasks = tasks.filter(t => t.priority === 'medium');
@@ -39,7 +42,7 @@ export const FiltersAndLabelsView = () => {
     displayedTasks = tasks.filter(t => t.priority === 'low');
     viewTitle = "Priority 3 (Low)";
   } else if (selectedFilter === 'due_today') {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
     displayedTasks = tasks.filter(t => t.dueDate === todayStr);
     viewTitle = "Due Today";
   } else if (selectedTag) {
@@ -107,7 +110,7 @@ export const FiltersAndLabelsView = () => {
                 <Clock size={15} color="#10B981" />
                 <span>Due Today</span>
                 <span className="filter-count">
-                  {tasks.filter(t => !t.completed && t.dueDate === new Date().toISOString().split('T')[0]).length}
+                  {tasks.filter(t => !t.completed && t.dueDate === getLocalDateString()).length}
                 </span>
               </button>
             </div>

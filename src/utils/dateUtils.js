@@ -1,5 +1,12 @@
 // Date utilities for human-friendly formatting and date manipulation
 
+export const getLocalDateString = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const getOngoingTimeString = () => {
   const now = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -9,39 +16,56 @@ export const getOngoingTimeString = () => {
 export const formatFriendlyDate = (dateInput, timeInput = null) => {
   if (!dateInput) return null;
   
-  let targetDate;
-  
-  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-    const [year, month, day] = dateInput.split('-').map(Number);
-    let hours = 9, minutes = 0;
+  let targetYear, targetMonth, targetDayNum;
+  let hours = 9, minutes = 0;
+
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+    // If dateInput is YYYY-MM-DD or starts with YYYY-MM-DD
+    const parts = dateInput.substring(0, 10).split('-').map(Number);
+    targetYear = parts[0];
+    targetMonth = parts[1] - 1;
+    targetDayNum = parts[2];
+
     if (timeInput && typeof timeInput === 'string') {
-      const parts = timeInput.split(':');
-      if (parts.length >= 2) {
-        hours = parseInt(parts[0], 10) || 0;
-        minutes = parseInt(parts[1], 10) || 0;
+      const tParts = timeInput.split(':').map(Number);
+      if (tParts.length >= 2) {
+        hours = tParts[0] || 0;
+        minutes = tParts[1] || 0;
+      }
+    } else if (dateInput.includes('T')) {
+      const d = new Date(dateInput);
+      if (!isNaN(d.getTime())) {
+        hours = d.getHours();
+        minutes = d.getMinutes();
       }
     }
-    targetDate = new Date(year, month - 1, day, hours, minutes, 0);
   } else {
-    targetDate = new Date(dateInput);
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return null;
+    targetYear = d.getFullYear();
+    targetMonth = d.getMonth();
+    targetDayNum = d.getDate();
+    hours = d.getHours();
+    minutes = d.getMinutes();
   }
-
-  if (isNaN(targetDate.getTime())) return null;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const targetDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+  const targetDay = new Date(targetYear, targetMonth, targetDayNum);
 
+  // Exact calendar day difference
   const diffTime = targetDay.getTime() - today.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-  const timeString = targetDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+  // Build display date and time string
+  const displayObj = new Date(targetYear, targetMonth, targetDayNum, hours, minutes);
+  const timeString = displayObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
 
   if (diffDays === 0) {
     return {
       text: `Today, ${timeString}`,
       isToday: true,
-      isOverdue: false, // Don't mark today's tasks as overdue during the day
+      isOverdue: false,
       tag: 'today'
     };
   } else if (diffDays === 1) {
@@ -60,14 +84,14 @@ export const formatFriendlyDate = (dateInput, timeInput = null) => {
     };
   } else if (diffDays < -1) {
     return {
-      text: `${targetDate.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeString}`,
+      text: `${displayObj.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeString}`,
       isToday: false,
       isOverdue: true,
       tag: 'overdue'
     };
   } else {
     return {
-      text: `${targetDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeString}`,
+      text: `${displayObj.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${timeString}`,
       isToday: false,
       isOverdue: false,
       tag: 'upcoming'
