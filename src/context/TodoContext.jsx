@@ -58,16 +58,31 @@ export const TodoProvider = ({ children }) => {
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
+  // Toast Helper (defined before other functions to prevent TDZ ReferenceError)
+  const addToast = (input, type = 'info', icon = null) => {
+    const id = `toast_${Date.now()}_${Math.random()}`;
+    const msg = typeof input === 'string' ? input : (input?.message || input?.title || 'Notification');
+    const toastType = typeof input === 'object' && input?.type ? input.type : type;
+    const toastIcon = typeof input === 'object' && input?.icon ? input.icon : icon;
+    
+    setToasts(prev => [...prev, { id, message: msg, type: toastType, icon: toastIcon }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3800);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
   const markOnboardingComplete = (preferences = {}) => {
     if (currentUser?.uid) {
-      localStorage.setItem(`aura_onboarded_${currentUser.uid}`, 'true');
+      try {
+        localStorage.setItem(`aura_onboarded_${currentUser.uid}`, 'true');
+      } catch (e) {}
     }
     setOnboardingOpen(false);
-    addToast({
-      title: "Welcome to Aura!",
-      message: "Your workspace is ready. Try typing a task naturally.",
-      type: "success"
-    });
+    addToast("Welcome to Aura! Your workspace is ready.", "success");
   };
 
   const addProject = (name, color = '#6366F1') => {
@@ -77,11 +92,7 @@ export const TodoProvider = ({ children }) => {
       try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
-    addToast({
-      title: "Project created",
-      message: `Project #${name} has been added.`,
-      type: "success"
-    });
+    addToast(`Project #${name} has been added.`, "success");
   };
 
   // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
@@ -155,19 +166,6 @@ export const TodoProvider = ({ children }) => {
       }
     }
   }, [tasks]);
-
-  // Toast Helper
-  const addToast = (message, type = 'info', icon = null) => {
-    const id = `toast_${Date.now()}_${Math.random()}`;
-    setToasts(prev => [...prev, { id, message, type, icon }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3800);
-  };
-
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
 
   // Add Task (Natural Language or Structured)
   const addTask = (input) => {
