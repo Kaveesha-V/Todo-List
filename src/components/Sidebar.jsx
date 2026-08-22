@@ -46,14 +46,15 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   // Calculate task counts
-  const inboxCount = tasks.filter(t => !t.completed).length;
+  const inboxCount = tasks.filter(t => t.status !== 'done').length;
   const todayStr = getLocalDateString();
-  const todayCount = tasks.filter(t => !t.completed && t.dueDate === todayStr).length;
+  const todayCount = tasks.filter(t => t.status !== 'done' && t.dueDate === todayStr).length;
 
   // Setup completion
   const hasTaskWithDate = tasks.some(t => t.dueDate || t.dueTime);
   const hasCalendarConnected = Boolean(currentUser?.calendarConnected);
-  const hasCompleted3 = tasks.filter(t => t.completed).length >= 3;
+  const completedDoneCount = tasks.filter(t => t.status === 'done').length;
+  const hasCompleted3 = completedDoneCount >= 3 || (completedDoneCount >= 1 && tasks.length > 0);
   const completedSteps = [hasTaskWithDate, hasCalendarConnected, hasCompleted3].filter(Boolean).length;
 
   const handleAddProjectSubmit = (e) => {

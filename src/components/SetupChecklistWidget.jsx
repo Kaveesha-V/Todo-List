@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { useAuth } from '../context/AuthContext';
+import confetti from 'canvas-confetti';
 import {
   CheckCircle2,
   Circle,
@@ -12,27 +13,41 @@ import {
 } from 'lucide-react';
 
 export const SetupChecklistWidget = () => {
-  const { tasks, setIsSettingsOpen } = useTodo();
+  const { tasks, setIsSettingsOpen, setActiveNavTab, addToast, toggleTaskComplete } = useTodo();
   const { currentUser, loginWithGoogle } = useAuth();
   const [isDismissed, setIsDismissed] = useState(false);
 
   if (isDismissed) return null;
 
-  // Step 1: Check if user has at least 1 task with a due date
+  // Step 1: Check if user has at least 1 task with a due date or time
   const hasTaskWithDate = tasks.some(t => t.dueDate || t.dueTime);
 
-  // Step 2: Check if Google Calendar is connected or user has used natural language
+  // Step 2: Check if Google Calendar is connected
   const hasCalendarConnected = Boolean(currentUser?.calendarConnected);
 
-  // Step 3: Check if user has completed at least 3 tasks
-  const completedCount = tasks.filter(t => t.completed).length;
-  const hasCompleted3 = completedCount >= 3;
+  // Step 3: Check if user has completed at least 3 tasks (or at least 1 task in active workflow)
+  const completedCount = tasks.filter(t => t.status === 'done').length;
+  const hasCompleted3 = completedCount >= 3 || (completedCount >= 1 && tasks.length > 0);
 
   const completedSteps = [hasTaskWithDate, hasCalendarConnected, hasCompleted3].filter(Boolean).length;
   const progressPercent = (completedSteps / 3) * 100;
 
+  const handleStep3Click = () => {
+    if (!hasCompleted3) {
+      // Find first uncompleted task and complete it, or switch to inbox
+      const uncompletedTask = tasks.find(t => t.status !== 'done');
+      if (uncompletedTask) {
+        toggleTaskComplete(uncompletedTask.id);
+        addToast(`Completed "${uncompletedTask.title}"! Finish your setup progress: ${Math.min(completedCount + 1, 3)}/3`, 'success');
+      } else {
+        setActiveNavTab('inbox');
+        addToast("Add and complete a task to finish setup!", "info");
+      }
+    }
+  };
+
   return (
-    <div className="setup-checklist-card">
+    <div className="setup-checklist-card animate-fade-in">
       {/* Close button */}
       <button
         type="button"
@@ -52,8 +67,14 @@ export const SetupChecklistWidget = () => {
       </div>
 
       {/* Title & Subtitle */}
-      <h3 className="setup-card-title">Finish your setup</h3>
-      <p className="setup-card-subtitle">Three quick steps to get the most out of Aura:</p>
+      <h3 className="setup-card-title">
+        {completedSteps === 3 ? "🎉 Setup Complete!" : "Finish your setup"}
+      </h3>
+      <p className="setup-card-subtitle">
+        {completedSteps === 3
+          ? "All three onboarding steps are completed. You're ready to master your productivity!"
+          : "Three quick steps to get the most out of Aura:"}
+      </p>
 
       {/* Progress Bar */}
       <div className="setup-progress-wrapper">
@@ -72,10 +93,10 @@ export const SetupChecklistWidget = () => {
         <div
           className={`setup-step-item ${hasTaskWithDate ? 'done' : ''}`}
           onClick={() => {
-            const inputEl = document.querySelector('.nlp-input-field');
+            const inputEl = document.querySelector('.nlp-text-input') || document.querySelector('input[type="text"]');
             if (inputEl) {
               inputEl.focus();
-              inputEl.value = "Review project milestone tomorrow at 4pm #work !high";
+              inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           }}
         >
@@ -121,7 +142,11 @@ export const SetupChecklistWidget = () => {
         </div>
 
         {/* Step 3 */}
-        <div className={`setup-step-item ${hasCompleted3 ? 'done' : ''}`}>
+        <div
+          className={`setup-step-item ${hasCompleted3 ? 'done' : ''}`}
+          onClick={handleStep3Click}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="setup-step-check">
             {hasCompleted3 ? (
               <CheckCircle2 size={18} color="#10B981" />
@@ -131,7 +156,9 @@ export const SetupChecklistWidget = () => {
           </div>
           <div className="setup-step-info">
             <span className="setup-step-title">Complete 3 tasks</span>
-            <span className="setup-step-desc">{completedCount} of 3 completed</span>
+            <span className="setup-step-desc">
+              {hasCompleted3 ? 'Completed & Verified ✓' : `${completedCount} of 3 completed (click to complete)`}
+            </span>
           </div>
           <ChevronRight size={14} className="setup-step-chevron" />
         </div>
@@ -142,9 +169,20 @@ export const SetupChecklistWidget = () => {
         <button
           type="button"
           className="setup-check-later-btn"
-          onClick={() => setIsDismissed(true)}
+          onClick={() => {
+            if (completedSteps === 3) {
+              try {
+                confetti({
+                  particleCount: 50,
+                  spread: 70,
+                  origin: { y: 0.7 }
+                });
+              } catch {}
+            }
+            setIsDismissed(true);
+          }}
         >
-          I'll check later
+          {completedSteps === 3 ? "Got it, close setup" : "I'll check later"}
         </button>
       </div>
     </div>
