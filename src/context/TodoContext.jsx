@@ -15,6 +15,7 @@ import {
   deleteTaskInCloud,
   syncLocalTasksToCloud
 } from '../services/firebaseDb';
+import { updateGoogleCalendarEventStatus } from '../services/googleCalendar';
 import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
 import { generateDailyDigest, generateSubtasksForTask } from '../utils/aiHelpers';
@@ -268,6 +269,9 @@ export const TodoProvider = ({ children }) => {
           status: nextStatus,
           updatedAt: new Date().toISOString()
         };
+        if (currentUser?.googleCalendarToken && t.gcalEventId) {
+          updateGoogleCalendarEventStatus(currentUser.googleCalendarToken, t.gcalEventId, nextStatus === 'done', t.title);
+        }
         if (isCloudDatabaseReady()) {
           updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud toggle failed:", err));
         }

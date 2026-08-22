@@ -24,7 +24,8 @@ import {
   Zap,
   Sun,
   Sunset,
-  Moon
+  Moon,
+  Flame
 } from 'lucide-react';
 
 export const UpcomingTimelineView = () => {
@@ -37,10 +38,12 @@ export const UpcomingTimelineView = () => {
   const [activeDayAdding, setActiveDayAdding] = useState(null);
   const [inlineTaskTitle, setInlineTaskTitle] = useState('');
   const [inlineTaskTime, setInlineTaskTime] = useState(() => getOngoingTimeString());
+  const [inlineTaskPriority, setInlineTaskPriority] = useState('medium'); // 'high' | 'medium' | 'low'
   const [daysCount, setDaysCount] = useState(30); // 30 days rolling by default (unlimited expandable)
   const [selectedMonthOffset, setSelectedMonthOffset] = useState(0);
   const [showPastHistory, setShowPastHistory] = useState(false);
   const [customJumpDate, setCustomJumpDate] = useState('');
+  const [highlightedDay, setHighlightedDay] = useState(null);
 
   // Date Anchors (Accurate Local Timezone)
   const today = new Date();
@@ -51,6 +54,7 @@ export const UpcomingTimelineView = () => {
   const handleOpenAddForDay = (dateStr) => {
     setActiveDayAdding(dateStr);
     setInlineTaskTime(getOngoingTimeString());
+    setInlineTaskPriority('medium');
   };
 
   // Convert 24h HH:mm to 12h readable string for display
@@ -99,7 +103,7 @@ export const UpcomingTimelineView = () => {
     });
   };
 
-  // Generate dynamic rolling timeline
+  // Generate dynamic rolling timeline (including custom jump date)
   const { daysList } = useMemo(() => {
     const list = [];
     const startDate = selectedMonthOffset === 0 ? today : anchorDate;
@@ -110,6 +114,10 @@ export const UpcomingTimelineView = () => {
         .filter(t => t.dueDate)
         .map(t => t.dueDate)
     );
+
+    if (customJumpDate && customJumpDate >= todayDateStr) {
+      taskDatesSet.add(customJumpDate);
+    }
 
     // 1. Generate sequential days from startDate
     for (let i = 0; i < daysCount; i++) {
@@ -147,10 +155,8 @@ export const UpcomingTimelineView = () => {
       });
     }
 
-    // 2. Add any other future dates that have tasks beyond the current daysCount
-    const distantDates = Array.from(taskDatesSet)
-      .filter(dateStr => dateStr > list[list.length - 1]?.dateStr)
-      .sort();
+    // 2. Add any other future dates (e.g. custom jump date 2030 or distant tasks)
+    const distantDates = Array.from(taskDatesSet).sort();
 
     distantDates.forEach(dateStr => {
       const d = new Date(dateStr + 'T00:00:00');
@@ -165,7 +171,7 @@ export const UpcomingTimelineView = () => {
         dayShort,
         dayNum,
         monthShort,
-        label: `${dayNum} ${monthShort} · ${dayName}`,
+        label: `${dayNum} ${monthShort} ${d.getFullYear()} · ${dayName}`,
         isToday: false,
         isPast: false,
         isDistant: true,
@@ -173,8 +179,9 @@ export const UpcomingTimelineView = () => {
       });
     });
 
-    return { daysList: list };
-  }, [upcomingTasks, daysCount, selectedMonthOffset, sortOption, todayDateStr]);
+    // Sort list chronologically
+    return { daysList: list.sort((a, b) => a.dateStr.localeCompare(b.dateStr)) };
+  }, [upcomingTasks, daysCount, selectedMonthOffset, sortOption, todayDateStr, customJumpDate]);
 
   // Full Month Grid Days Generator
   const monthGridDays = useMemo(() => {
@@ -184,7 +191,6 @@ export const UpcomingTimelineView = () => {
     const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
 
     const grid = [];
-    // Blank padding for days of week before 1st of month
     for (let p = 0; p < firstDayIndex; p++) {
       grid.push({ isBlank: true, id: `blank_${p}` });
     }
@@ -210,7 +216,7 @@ export const UpcomingTimelineView = () => {
     return grid;
   }, [anchorDate, upcomingTasks, todayDateStr]);
 
-  // Handle adding task with automatic Google Calendar Event Creation
+  // Handle adding task with Google Calendar Event Creation & Priority
   const handleInlineSubmit = async (e, dateStr) => {
     e.preventDefault();
     if (!inlineTaskTitle.trim()) return;
@@ -225,7 +231,7 @@ export const UpcomingTimelineView = () => {
       title: inlineTaskTitle.trim(),
       dueDate: dateStr,
       dueTime: inlineTaskTime || getOngoingTimeString(),
-      priority: 'medium',
+      priority: inlineTaskPriority || 'medium',
       tags: ['upcoming', 'gcal'],
       status: 'todo',
       gcalSynced: true
@@ -246,31 +252,33 @@ export const UpcomingTimelineView = () => {
 
     addTask(newTaskData);
     if (addToast) {
-      addToast(`Scheduled at ${format12Hour(newTaskData.dueTime)} & synced to Google Calendar! 📅`, "success");
+      addToast(`Added "${newTaskData.title}" (${newTaskData.priority.toUpperCase()}) & synced to Google Calendar! 📅`, "success");
     }
 
     setInlineTaskTitle('');
     setActiveDayAdding(null);
   };
 
-  // Jump to custom date
+  // Smooth jump to custom date
   const handleJumpToDate = (e) => {
     const selectedDate = e.target.value;
     setCustomJumpDate(selectedDate);
+    
     if (selectedDate) {
       if (selectedDate < todayDateStr) {
         if (addToast) addToast("Selected date is in the past", "info");
       }
-      const el = document.getElementById(`day-section-${selectedDate}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        setDaysCount(prev => prev + 45);
-        setTimeout(() => {
-          const el2 = document.getElementById(`day-section-${selectedDate}`);
-          if (el2) el2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
-      }
+
+      setHighlightedDay(selectedDate);
+      setViewLayout('timeline');
+
+      setTimeout(() => {
+        const el = document.getElementById(`day-section-${selectedDate}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          handleOpenAddForDay(selectedDate);
+        }
+      }, 150);
     }
   };
 
@@ -317,7 +325,7 @@ export const UpcomingTimelineView = () => {
           </div>
         </div>
 
-        {/* Header Right: Layout Toggle, Sort Selector, G-Cal Badge */}
+        {/* Header Right: Layout Toggle, Sort Selector */}
         <div className="upcoming-header-tools">
           {/* Sort Selector */}
           <div className="upcoming-sort-control">
@@ -354,35 +362,12 @@ export const UpcomingTimelineView = () => {
               <LayoutGrid size={15} />
             </button>
           </div>
-
-          {/* Google Calendar Sync Indicator */}
-          {currentUser?.calendarConnected ? (
-            <div className="upcoming-gcal-badge active" title="Google Calendar Live Synced">
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path fill="#4285F4" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#4285F4">31</text>
-              </svg>
-              <span>G-Cal Live</span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="upcoming-connect-gcal-btn"
-              onClick={() => connectGoogleCalendar && connectGoogleCalendar()}
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16">
-                <path fill="#4285F4" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                <text x="12" y="16" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#4285F4">31</text>
-              </svg>
-              <span>Connect Google Calendar</span>
-            </button>
-          )}
         </div>
       </div>
 
       {/* Quick Date Jump Picker */}
       <div className="upcoming-jump-bar">
-        <span className="jump-label">Jump to any date:</span>
+        <span className="jump-label">Jump to any date smoothly:</span>
         <input
           type="date"
           min={todayDateStr} // Block past dates
@@ -391,6 +376,15 @@ export const UpcomingTimelineView = () => {
           className="upcoming-date-jump-input"
           title="Jump to date"
         />
+        {customJumpDate && (
+          <button
+            type="button"
+            className="clear-jump-btn"
+            onClick={() => setCustomJumpDate('')}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* VIEW 1: MONTH GRID CALENDAR */}
@@ -412,7 +406,10 @@ export const UpcomingTimelineView = () => {
                       setViewLayout('timeline');
                       setTimeout(() => {
                         const el = document.getElementById(`day-section-${cell.dateStr}`);
-                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          handleOpenAddForDay(cell.dateStr);
+                        }
                       }, 100);
                     }
                   }}
@@ -465,7 +462,7 @@ export const UpcomingTimelineView = () => {
               <div
                 key={day.dateStr}
                 id={`day-section-${day.dateStr}`}
-                className={`upcoming-day-block ${day.isToday ? 'today-block' : ''}`}
+                className={`upcoming-day-block ${day.isToday ? 'today-block' : ''} ${highlightedDay === day.dateStr ? 'highlight-glow' : ''}`}
               >
                 {/* Day Header */}
                 <div className="upcoming-day-header">
@@ -499,7 +496,7 @@ export const UpcomingTimelineView = () => {
                   )}
                 </div>
 
-                {/* Inline Add Task Row with Intuitive Ongoing Time Picker */}
+                {/* Inline Add Task Row with Priority & Intuitive Ongoing Time Picker */}
                 {day.isPast ? (
                   <div className="upcoming-past-date-notice">
                     <span>Past date · New task additions disabled</span>
@@ -518,6 +515,35 @@ export const UpcomingTimelineView = () => {
                         autoFocus
                         className="upcoming-inline-input"
                       />
+                    </div>
+
+                    {/* Priority Selector Row */}
+                    <div className="inline-priority-picker-row">
+                      <span className="priority-picker-label">Priority:</span>
+                      <div className="priority-picker-buttons">
+                        <button
+                          type="button"
+                          className={`p-btn p-high ${inlineTaskPriority === 'high' ? 'active' : ''}`}
+                          onClick={() => setInlineTaskPriority('high')}
+                        >
+                          <Flame size={12} />
+                          <span>High</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`p-btn p-med ${inlineTaskPriority === 'medium' ? 'active' : ''}`}
+                          onClick={() => setInlineTaskPriority('medium')}
+                        >
+                          <span>Medium</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={`p-btn p-low ${inlineTaskPriority === 'low' ? 'active' : ''}`}
+                          onClick={() => setInlineTaskPriority('low')}
+                        >
+                          <span>Low</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Intuitive Ongoing Time Picker Controls */}

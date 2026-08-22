@@ -15,7 +15,7 @@ import {
   Menu
 } from 'lucide-react';
 
-export const Header = ({ onToggleSidebar }) => {
+export const Header = ({ onToggleSidebar, onToggleAISidebar }) => {
   const { currentUser, connectGoogleCalendar } = useAuth();
   const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
 
@@ -60,30 +60,16 @@ export const Header = ({ onToggleSidebar }) => {
             <span>Live Sync</span>
           </div>
 
-          {/* Google Calendar Link Button or Synced Chip */}
-          {currentUser && (
-            currentUser.calendarConnected ? (
-              <div
-                className="sync-status-indicator"
-                style={{ cursor: 'pointer', background: 'var(--gcal-bg)', borderColor: 'var(--gcal-border)', color: 'var(--gcal-blue)' }}
-                onClick={() => setIsSettingsOpen(true)}
-                title="Google Calendar Live Synced"
-              >
-                <Calendar size={13} />
-                <span>G-Cal Linked</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="gcal-connect-header-btn"
-                onClick={() => connectGoogleCalendar && connectGoogleCalendar()}
-                title="Connect your Google Calendar"
-              >
-                <Calendar size={13} />
-                <span>Connect Google Calendar</span>
-              </button>
-            )
-          )}
+          {/* AI Prompting Workspace Button */}
+          <button
+            type="button"
+            className="ai-workspace-header-btn"
+            onClick={() => onToggleAISidebar && onToggleAISidebar()}
+            title="Open AI Prompting & Workspace Assistant"
+          >
+            <Sparkles size={14} />
+            <span>AI Workspace</span>
+          </button>
 
           {/* Theme Toggle Button */}
           <button

@@ -112,3 +112,29 @@ export const syncTaskToGoogleCalendarAPI = async (accessToken, task) => {
     };
   }
 };
+
+/**
+ * Update event on Google Calendar when task is completed or uncompleted
+ */
+export const updateGoogleCalendarEventStatus = async (accessToken, eventId, isCompleted, title) => {
+  if (!accessToken || !eventId) return;
+
+  try {
+    const cleanTitle = (title || '').replace(/^✓ \[COMPLETED\]\s*/i, '');
+    const updatedSummary = isCompleted ? `✓ [COMPLETED] ${cleanTitle}` : cleanTitle;
+
+    await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        summary: updatedSummary,
+        colorId: isCompleted ? "8" : "9" // Gray in Google Calendar
+      })
+    });
+  } catch (e) {
+    console.warn("Google Calendar status sync notice:", e);
+  }
+};

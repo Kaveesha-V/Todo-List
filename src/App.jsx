@@ -15,6 +15,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { AuthScreen } from './components/AuthScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { SetupChecklistWidget } from './components/SetupChecklistWidget';
+import { AIAssistantDrawer } from './components/AIAssistantDrawer';
 import { ToastContainer } from './components/Toast';
 import { Sparkles, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -29,6 +30,7 @@ const DashboardContent = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // If no user is logged in, show the secure Auth Screen
   if (!currentUser) {
@@ -50,8 +52,11 @@ const DashboardContent = () => {
 
       {/* Main Content Area with Header */}
       <div className="app-main-column">
-        {/* App Header with Live Ongoing Clock */}
-        <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        {/* App Header with Live Ongoing Clock & AI Assistant Button */}
+        <Header
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          onToggleAISidebar={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
+        />
 
         {/* Dynamic Views based on Sidebar Selection */}
         <main className="main-content">
@@ -112,6 +117,12 @@ const DashboardContent = () => {
 
       {/* Settings / Reminders Modal */}
       <SettingsModal />
+
+      {/* AI Assistant Workspace Drawer (Powered by OpenAI) */}
+      <AIAssistantDrawer
+        isOpen={isAIAssistantOpen}
+        onClose={() => setIsAIAssistantOpen(false)}
+      />
 
       {/* Interactive Onboarding Flow (Screenshots 1 & 2) */}
       <OnboardingModal
