@@ -25,6 +25,7 @@ import {
   requestBrowserNotificationPermission,
   sendBrowserNotification
 } from '../services/liveAlarmService';
+import { sendLiveTaskEmailAlert } from '../services/emailReminderService';
 import { getLocalDateString } from '../utils/dateUtils';
 import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
@@ -216,6 +217,12 @@ export const TodoProvider = ({ children }) => {
                 `Scheduled for ${task.dueTime}. Priority: ${task.priority.toUpperCase()}`,
                 `task_due_${task.id}`
               );
+
+              // Live Email Alert sent directly to logged-in user email
+              if (currentUser?.email) {
+                sendLiveTaskEmailAlert(currentUser.email, task);
+                addToast(`📧 Task alert email sent to ${currentUser.email}`, 'info');
+              }
             }
           }
           // 2. 30 Minutes Before Reminder
@@ -230,6 +237,11 @@ export const TodoProvider = ({ children }) => {
                 `"${task.title}" is scheduled at ${task.dueTime}.`,
                 `task_30m_${task.id}`
               );
+
+              // Live 30-min Email Alert sent directly to logged-in user email
+              if (currentUser?.email) {
+                sendLiveTaskEmailAlert(currentUser.email, task);
+              }
             }
           }
         }

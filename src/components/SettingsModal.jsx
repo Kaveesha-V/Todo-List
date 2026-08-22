@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
 import { playNotificationChime, stopNotificationAlarm } from '../services/liveAlarmService';
+import { sendLiveTaskEmailAlert } from '../services/emailReminderService';
 import {
   X,
   Bell,
@@ -14,7 +15,9 @@ import {
   User,
   LogOut,
   Volume2,
-  Plus
+  Plus,
+  Mail,
+  Send
 } from 'lucide-react';
 
 export const SettingsModal = () => {
@@ -289,6 +292,43 @@ export const SettingsModal = () => {
                 >
                   <Volume2 size={14} style={{ color: 'var(--primary)' }} />
                   <span>{isPlayingTestSound ? '⏹ Stop Melody' : '🎵 Test 8s Alarm Melody'}</span>
+                </button>
+              </div>
+
+              {/* Live Email Inbox Reminders (New) */}
+              <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px dashed var(--border-subtle)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Mail size={15} style={{ color: 'var(--primary)' }} />
+                    <span className="switch-label">Live Email Inbox Reminders</span>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', background: 'rgba(16, 185, 129, 0.12)', color: '#10B981', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                    🟢 Active for {currentUser?.email || 'Logged In Account'}
+                  </span>
+                </div>
+                <p className="setting-card-desc" style={{ marginBottom: '10px' }}>
+                  Live task notifications & 30-min heads-up alerts are dispatched directly to your logged-in email inbox.
+                </p>
+
+                <button
+                  type="button"
+                  className="digest-chip-btn"
+                  onClick={async () => {
+                    if (currentUser?.email) {
+                      addToast("Sending test task reminder email...", "info");
+                      await sendLiveTaskEmailAlert(currentUser.email, {
+                        title: "Test Task Reminder",
+                        dueDate: "Today",
+                        dueTime: "Now",
+                        priority: "high"
+                      });
+                      addToast(`📧 Test reminder email dispatched to ${currentUser.email}!`, "success");
+                    }
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Send size={13} />
+                  <span>Send Test Reminder Email to {currentUser?.email}</span>
                 </button>
               </div>
             </div>
