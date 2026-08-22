@@ -56,13 +56,6 @@ const DashboardContent = () => {
       {/* Settings / Reminders Modal */}
       <SettingsModal />
 
-      {/* Auth Modal for adding secondary accounts */}
-      {authModalOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true">
-          <AuthScreen />
-        </div>
-      )}
-
       {/* Toast Feedback Stack */}
       <ToastContainer />
     </div>
