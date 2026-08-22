@@ -379,29 +379,33 @@ export const TodoProvider = ({ children }) => {
     addToast("Task deleted", "info");
   };
 
-  // Toggle Completion
+  // Toggle Completion (Finished tasks cannot be undone, but can be deleted)
   const toggleTaskComplete = (taskId) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        const nextStatus = t.status === 'done' ? 'todo' : 'done';
-        if (nextStatus === 'done') {
-          try {
-            confetti({
-              particleCount: 45,
-              spread: 60,
-              origin: { y: 0.8 },
-              colors: ['#6366F1', '#10B981', '#F59E0B', '#8B5CF6']
-            });
-          } catch {}
-          addToast(`Completed: ${t.title}`, 'success');
+        if (t.status === 'done') {
+          addToast("Finished tasks are permanently recorded and cannot be undone. You can delete this task if desired.", "info");
+          return t;
         }
+
+        const nextStatus = 'done';
+        try {
+          confetti({
+            particleCount: 45,
+            spread: 60,
+            origin: { y: 0.8 },
+            colors: ['#6366F1', '#10B981', '#F59E0B', '#8B5CF6']
+          });
+        } catch {}
+        addToast(`Completed: ${t.title}`, 'success');
+
         const updated = {
           ...t,
           status: nextStatus,
           updatedAt: new Date().toISOString()
         };
         if (currentUser?.googleCalendarToken && t.gcalEventId) {
-          updateGoogleCalendarEventStatus(currentUser.googleCalendarToken, t.gcalEventId, nextStatus === 'done', t.title);
+          updateGoogleCalendarEventStatus(currentUser.googleCalendarToken, t.gcalEventId, true, t.title);
         }
         if (isCloudDatabaseReady()) {
           updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud toggle failed:", err));

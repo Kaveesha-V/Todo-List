@@ -64,16 +64,16 @@ export const TaskCard = ({ task }) => {
         onClick={handleCardClick}
         aria-label={`Task: ${task.title}`}
       >
-        {/* Checkbox */}
+        {/* Checkbox (Finished tasks cannot be undone, but can be deleted) */}
         <button
           type="button"
-          className={`custom-checkbox ${isCompleted ? 'checked' : ''}`}
+          className={`custom-checkbox ${isCompleted ? 'checked locked' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
             toggleTaskComplete(task.id);
           }}
-          title={isCompleted ? "Mark as active / uncomplete" : "Mark as completed"}
-          aria-label={isCompleted ? "Mark as incomplete" : "Mark as completed"}
+          title={isCompleted ? "Finished (Permanently recorded - cannot undo, but can be deleted)" : "Mark as completed"}
+          aria-label={isCompleted ? "Finished task" : "Mark as completed"}
         >
           {isCompleted && <Check size={13} strokeWidth={3} />}
         </button>
