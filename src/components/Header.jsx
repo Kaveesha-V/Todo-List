@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
 import { AccountMenu } from './AccountMenu';
+import { LiveClock } from './LiveClock';
 import {
   Sparkles,
   Sun,
@@ -10,19 +11,31 @@ import {
   CheckCircle2,
   Calendar,
   LogIn,
-  ChevronDown
+  ChevronDown,
+  Menu
 } from 'lucide-react';
 
-export const Header = () => {
+export const Header = ({ onToggleSidebar }) => {
   const { currentUser, loginWithGoogle } = useAuth();
-  const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
+  const { theme, toggleTheme, setIsSettingsOpen, setOnboardingOpen } = useTodo();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
     <header className="app-header">
       <div className="header-inner">
-        {/* Brand */}
+        {/* Left: Brand & Sidebar Toggle */}
         <div className="brand-section">
+          {onToggleSidebar && (
+            <button
+              type="button"
+              className="header-sidebar-toggle-btn"
+              onClick={onToggleSidebar}
+              title="Toggle Sidebar Navigation"
+              aria-label="Toggle Sidebar"
+            >
+              <Menu size={18} />
+            </button>
+          )}
           <div className="brand-logo">
             <CheckCircle2 size={22} strokeWidth={2.5} />
           </div>
@@ -39,6 +52,9 @@ export const Header = () => {
 
         {/* Header Right Actions */}
         <div className="header-actions">
+          {/* Live Ongoing Clock Widget */}
+          <LiveClock />
+
           {/* Live Sync Indicator */}
           <div className="sync-status-indicator" title="Real-time multi-tab & cloud sync enabled">
             <span className="sync-pulse-dot"></span>

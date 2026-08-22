@@ -27,14 +27,62 @@ export const TodoProvider = ({ children }) => {
   const [tasks, setTasks] = useState(() => currentUser ? loadUserTasks(currentUser.uid) : []);
   const [theme, setTheme] = useState(() => loadStoredTheme());
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
+  const [activeNavTab, setActiveNavTab] = useState('inbox'); // 'inbox' | 'today' | 'upcoming' | 'filters' | 'reporting' | 'kanban' | project_id
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTag, setSelectedTag] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(() => {
+    // Show onboarding for first-time user who has not completed it
+    if (typeof window !== 'undefined' && currentUser?.uid) {
+      const done = localStorage.getItem(`aura_onboarded_${currentUser.uid}`);
+      return !done;
+    }
+    return false;
+  });
+  const [projects, setProjects] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('aura_projects');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { id: 'work', name: 'Work', color: '#6366F1' },
+      { id: 'personal', name: 'Personal', color: '#10B981' },
+      { id: 'study', name: 'Study', color: '#F59E0B' }
+    ];
+  });
   const [toasts, setToasts] = useState([]);
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+
+  const markOnboardingComplete = (preferences = {}) => {
+    if (currentUser?.uid) {
+      localStorage.setItem(`aura_onboarded_${currentUser.uid}`, 'true');
+    }
+    setOnboardingOpen(false);
+    addToast({
+      title: "Welcome to Aura!",
+      message: "Your workspace is ready. Try typing a task naturally.",
+      type: "success"
+    });
+  };
+
+  const addProject = (name, color = '#6366F1') => {
+    const newProj = { id: `proj_${Date.now()}`, name, color };
+    setProjects(prev => {
+      const updated = [...prev, newProj];
+      try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    addToast({
+      title: "Project created",
+      message: `Project #${name} has been added.`,
+      type: "success"
+    });
+  };
 
   // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
   useEffect(() => {
@@ -337,8 +385,13 @@ export const TodoProvider = ({ children }) => {
         setSelectedFilter,
         selectedTag,
         setSelectedTag,
-        activeTask,
-        setActiveTask,
+        activeNavTab,
+        setActiveNavTab,
+        projects,
+        addProject,
+        onboardingOpen,
+        setOnboardingOpen,
+        markOnboardingComplete,
         isSettingsOpen,
         setIsSettingsOpen,
         toasts,
