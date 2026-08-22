@@ -8,15 +8,23 @@ import {
   saveUserTasks,
   loadUserTasks
 } from '../utils/storage';
+import {
+  isCloudDatabaseReady,
+  firebaseLoginWithGoogle,
+  firebaseSignupWithEmail,
+  firebaseLoginWithEmail,
+  firebaseSendPasswordReset,
+  firebaseLogout,
+  getFirebaseInstance
+} from '../services/firebaseDb';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  // Purge any old dummy accounts (like user_5423, user_2011) from previous runs
   const [currentUser, setCurrentUser] = useState(() => {
     const user = loadStoredCurrentUser();
     if (user && /^user_\d+@gmail\.com$/i.test(user.email)) {
-      // Clear dummy user
       saveStoredCurrentUser(null);
       return null;
     }
@@ -25,14 +33,13 @@ export const AuthProvider = ({ children }) => {
 
   const [savedAccounts, setSavedAccounts] = useState(() => {
     const accounts = loadStoredAccounts();
-    // Filter out dummy generated emails
     const clean = (accounts || []).filter(a => !/^user_\d+@gmail\.com$/i.test(a.email));
     if (clean.length === 0) {
       const defaultAccs = [
         {
-          uid: 'usr_g_kaveesha_1',
-          email: 'kaveeshaviraj@gmail.com',
-          displayName: 'Kaveesha Viraj',
+          uid: 'usr_g_kaveesha_primary',
+          displayName: 'Kaveesha Vimukthi',
+          email: 'kaveeshavimukthi688@gmail.com',
           photoURL: null,
           provider: 'google',
           calendarConnected: true,
@@ -50,6 +57,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [googleModalOpen, setGoogleModalOpen] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   // Sync auth state to storage
   useEffect(() => {
@@ -60,7 +68,82 @@ export const AuthProvider = ({ children }) => {
     saveStoredAccounts(savedAccounts);
   }, [savedAccounts]);
 
-  // Authenticate via Google OAuth
+  // Listen to Firebase Auth state changes
+  useEffect(() => {
+    if (isCloudDatabaseReady()) {
+      const { auth } = getFirebaseInstance();
+      if (auth) {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+          if (firebaseUser) {
+            const mappedUser = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
+              photoURL: firebaseUser.photoURL,
+              provider: firebaseUser.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'email',
+              calendarConnected: true,
+              emailVerified: firebaseUser.emailVerified,
+              lastLogin: new Date().toISOString()
+            };
+            setCurrentUser(mappedUser);
+            setSavedAccounts(prev => [mappedUser, ...prev.filter(a => a.uid !== mappedUser.uid)]);
+          }
+          setAuthInitialized(true);
+        });
+        return () => unsubscribe();
+      }
+    }
+    setAuthInitialized(true);
+  }, []);
+
+  // Helper to generate starter tasks
+  const createStarterTasks = (uid, calendarConnected = false) => {
+    const existing = loadUserTasks(uid);
+    if (!existing || existing.length === 0) {
+      saveUserTasks(uid, [
+        {
+          id: `task_welcome_${Date.now()}`,
+          userId: uid,
+          title: "Welcome to Aura! Type a task above to get started",
+          description: "Try saying 'Schedule team sync tomorrow at 3pm #work !high' to experience AI natural language parsing.",
+          dueDate: new Date(Date.now() + 86400000).toISOString(),
+          priority: "high",
+          status: "todo",
+          tags: ["welcome"],
+          subtasks: [
+            { id: `sub_1_${Date.now()}`, title: "Try List view and Kanban board view", done: false },
+            { id: `sub_2_${Date.now()}`, title: "Check Task Detail panel and Google Calendar sync", done: false }
+          ],
+          googleEventId: calendarConnected ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
+          reminderOffsetsMinutes: [60],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ]);
+    }
+  };
+
+  // Real Google Sign-in Workflow
+  const loginWithGoogle = async () => {
+    if (isCloudDatabaseReady()) {
+      try {
+        const user = await firebaseLoginWithGoogle();
+        createStarterTasks(user.uid, true);
+        setCurrentUser(user);
+        setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
+        setGoogleModalOpen(false);
+        return user;
+      } catch (err) {
+        console.warn("Firebase Google popup error:", err);
+        // If popup closed or domain not configured, rethrow to show user-friendly message
+        throw err;
+      }
+    } else {
+      setGoogleModalOpen(true);
+    }
+  };
+
+  // Authenticate via Google Chooser Modal (fallback or demo mode)
   const signInWithGoogleAccount = ({ email, displayName, calendarConnected = true }) => {
     const cleanEmail = email.trim().toLowerCase();
     const existing = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
@@ -89,31 +172,7 @@ export const AuthProvider = ({ children }) => {
         lastLogin: new Date().toISOString()
       };
 
-      // Create starter task for new Google user if no tasks exist
-      const existingTasks = loadUserTasks(uid);
-      if (!existingTasks || existingTasks.length === 0) {
-        saveUserTasks(uid, [
-          {
-            id: `task_welcome_${Date.now()}`,
-            userId: uid,
-            title: "Welcome to Aura! Type a task above to get started",
-            description: "Try saying 'Schedule team sync tomorrow at 3pm #work !high' to experience AI natural language parsing.",
-            dueDate: new Date(Date.now() + 86400000).toISOString(),
-            priority: "high",
-            status: "todo",
-            tags: ["welcome"],
-            subtasks: [
-              { id: `sub_1_${Date.now()}`, title: "Try List view and Kanban board view", done: false },
-              { id: `sub_2_${Date.now()}`, title: "Check Task Detail panel and Google Calendar sync", done: false }
-            ],
-            googleEventId: calendarConnected ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
-            reminderOffsetsMinutes: [60],
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        ]);
-      }
-
+      createStarterTasks(uid, calendarConnected);
       setSavedAccounts(prev => [userObj, ...prev.filter(a => a.uid !== uid)]);
     }
 
@@ -123,10 +182,23 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Email & Password Login
-  const loginWithEmail = (email, password) => {
+  const loginWithEmail = async (email, password) => {
     const cleanEmail = email.trim().toLowerCase();
-    const account = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
 
+    if (isCloudDatabaseReady()) {
+      try {
+        const user = await firebaseLoginWithEmail(cleanEmail, password);
+        setCurrentUser(user);
+        setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
+        return user;
+      } catch (err) {
+        console.warn("Firebase email login error:", err);
+        throw new Error(err.message || "Invalid email or password.");
+      }
+    }
+
+    // Local fallback
+    const account = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
     if (!account) {
       throw new Error("No account found with this email. Please click Sign Up to register.");
     }
@@ -141,12 +213,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Sign Up with Email & Password
-  const signupWithEmail = (displayName, email, password) => {
+  const signupWithEmail = async (displayName, email, password) => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !password) {
       throw new Error("Please enter both email and password.");
     }
 
+    if (isCloudDatabaseReady()) {
+      try {
+        const user = await firebaseSignupWithEmail(displayName, cleanEmail, password);
+        createStarterTasks(user.uid, false);
+        setCurrentUser(user);
+        setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
+        return user;
+      } catch (err) {
+        console.warn("Firebase email signup error:", err);
+        throw new Error(err.message || "Could not create account.");
+      }
+    }
+
+    // Local fallback
     const existing = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
     if (existing) {
       throw new Error("An account with this email already exists. Please Sign In.");
@@ -166,31 +252,17 @@ export const AuthProvider = ({ children }) => {
       lastLogin: new Date().toISOString()
     };
 
-    // Save empty task list for new user
-    saveUserTasks(uid, [
-      {
-        id: `task_welcome_${Date.now()}`,
-        userId: uid,
-        title: "Welcome to Aura! Add your first task above",
-        description: "Use the natural language input bar to quickly create tasks with due dates and tags.",
-        dueDate: new Date(Date.now() + 86400000).toISOString(),
-        priority: "medium",
-        status: "todo",
-        tags: ["welcome"],
-        subtasks: [
-          { id: `sub_1_${Date.now()}`, title: "Create my first personal task", done: false },
-          { id: `sub_2_${Date.now()}`, title: "Explore Kanban view", done: false }
-        ],
-        googleEventId: null,
-        reminderOffsetsMinutes: [60],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-    ]);
-
+    createStarterTasks(uid, false);
     setSavedAccounts(prev => [newUser, ...prev]);
     setCurrentUser(newUser);
     return newUser;
+  };
+
+  // Send Password Reset
+  const sendPasswordReset = async (email) => {
+    if (isCloudDatabaseReady()) {
+      await firebaseSendPasswordReset(email.trim().toLowerCase());
+    }
   };
 
   // Switch Active Account
@@ -202,7 +274,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Log Out
-  const logout = () => {
+  const logout = async () => {
+    if (isCloudDatabaseReady()) {
+      await firebaseLogout();
+    }
     setCurrentUser(null);
   };
 
@@ -245,9 +320,11 @@ export const AuthProvider = ({ children }) => {
         savedAccounts,
         googleModalOpen,
         setGoogleModalOpen,
+        loginWithGoogle,
         signInWithGoogleAccount,
         loginWithEmail,
         signupWithEmail,
+        sendPasswordReset,
         switchAccount,
         logout,
         deleteAccount,

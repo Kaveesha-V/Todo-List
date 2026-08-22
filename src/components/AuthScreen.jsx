@@ -19,9 +19,11 @@ import {
 
 export const AuthScreen = () => {
   const {
+    loginWithGoogle,
     loginWithEmail,
     signupWithEmail,
     signInWithGoogleAccount,
+    sendPasswordReset,
     googleModalOpen,
     setGoogleModalOpen
   } = useAuth();
@@ -62,7 +64,25 @@ export const AuthScreen = () => {
     }
   ];
 
-  const handleSubmit = (e) => {
+  const handleGoogleSignIn = async () => {
+    setErrorMsg('');
+    setIsLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.warn("Google sign-in attempt:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setIsLoading(false);
+        return;
+      }
+      // If popup was blocked or Firebase domain requires permission, open the Google popup window
+      setGoogleModalOpen(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -87,20 +107,26 @@ export const AuthScreen = () => {
           setIsLoading(false);
           return;
         }
-        signupWithEmail(displayName, cleanEmail, password);
+        await signupWithEmail(displayName, cleanEmail, password);
       } else {
-        loginWithEmail(cleanEmail, password);
+        await loginWithEmail(cleanEmail, password);
       }
     } catch (err) {
       setErrorMsg(err.message || "Authentication failed. Please check your credentials.");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleForgotPasswordSubmit = (e) => {
+  const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
     if (!forgotEmail.trim()) return;
-    setForgotSent(true);
+    try {
+      await sendPasswordReset(forgotEmail);
+      setForgotSent(true);
+    } catch (err) {
+      setErrorMsg(err.message || "Could not send reset link.");
+    }
   };
 
   const nextSlide = () => {
@@ -205,7 +231,7 @@ export const AuthScreen = () => {
           <button
             type="button"
             className="webflow-google-btn"
-            onClick={() => setGoogleModalOpen(true)}
+            onClick={handleGoogleSignIn}
             disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" width="19" height="19" aria-label="Google">

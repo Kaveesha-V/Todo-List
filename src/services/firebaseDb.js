@@ -22,6 +22,10 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
   signOut
 } from 'firebase/auth';
 
@@ -57,6 +61,121 @@ export const getFirebaseInstance = () => {
   } catch (err) {
     console.warn("Firebase initialization failed:", err);
     return { app: null, db: null, auth: null };
+  }
+};
+
+/**
+ * Real Firebase Google OAuth Popup Workflow
+ * Triggers the authentic native Google Sign-in popup from accounts.google.com
+ */
+export const firebaseLoginWithGoogle = async () => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
+  
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar.events');
+  provider.setCustomParameters({ prompt: 'select_account' });
+  
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const token = credential?.accessToken;
+  const user = result.user;
+  
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || user.email.split('@')[0],
+    photoURL: user.photoURL,
+    provider: 'google',
+    calendarConnected: true,
+    emailVerified: user.emailVerified,
+    accessToken: token,
+    lastLogin: new Date().toISOString()
+  };
+};
+
+/**
+ * Real Firebase Email/Password Sign Up with Email Verification Link
+ */
+export const firebaseSignupWithEmail = async (displayName, email, password) => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
+  
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+  
+  if (displayName) {
+    try {
+      await updateProfile(user, { displayName });
+    } catch (e) {
+      console.warn("Could not update profile name:", e);
+    }
+  }
+  
+  // Send email verification link to user's real email inbox
+  let emailSent = false;
+  try {
+    await sendEmailVerification(user);
+    emailSent = true;
+  } catch (e) {
+    console.warn("Could not send email verification:", e);
+  }
+  
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: displayName || user.email.split('@')[0],
+    photoURL: user.photoURL,
+    provider: 'email',
+    calendarConnected: false,
+    emailVerified: user.emailVerified,
+    verificationSent: emailSent,
+    lastLogin: new Date().toISOString()
+  };
+};
+
+/**
+ * Real Firebase Email/Password Sign In
+ */
+export const firebaseLoginWithEmail = async (email, password) => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
+  
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+  
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName || user.email.split('@')[0],
+    photoURL: user.photoURL,
+    provider: 'email',
+    calendarConnected: false,
+    emailVerified: user.emailVerified,
+    lastLogin: new Date().toISOString()
+  };
+};
+
+/**
+ * Real Firebase Password Reset Email
+ */
+export const firebaseSendPasswordReset = async (email) => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
+  await sendPasswordResetEmail(auth, email);
+};
+
+/**
+ * Real Firebase Sign Out
+ */
+export const firebaseLogout = async () => {
+  const { auth } = getFirebaseInstance();
+  if (auth) {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn("Signout error:", err);
+    }
   }
 };
 
