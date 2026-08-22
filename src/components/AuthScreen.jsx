@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { isCloudDatabaseReady } from '../services/firebaseDb';
 import {
   CheckCircle2,
   Lock,
@@ -62,6 +63,12 @@ export const AuthScreen = () => {
 
   const handleGoogleSignIn = async () => {
     setErrorMsg('');
+
+    if (!isCloudDatabaseReady()) {
+      setErrorMsg("⚠️ Environment variables missing on Vercel: Please add your VITE_FIREBASE_API_KEY, VITE_FIREBASE_PROJECT_ID, etc. in Vercel Project Settings > Environment Variables, then redeploy.");
+      return;
+    }
+
     setIsLoading(true);
     try {
       await loginWithGoogle();
@@ -69,14 +76,13 @@ export const AuthScreen = () => {
       console.error("Firebase Google sign-in error:", err);
       if (err.code === 'auth/popup-closed-by-user') {
         setErrorMsg("Sign-in cancelled: The Google popup was closed.");
-      } else if (err.code === 'auth/api-key-not-valid' || (err.message && err.message.includes('api-key-not-valid'))) {
-        setErrorMsg("⚠️ Google Identity Toolkit API is not enabled in your Google Cloud project. Please open: https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=to-dolist-e1532 and click 'ENABLE'.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        const currentHost = window.location.hostname;
+        setErrorMsg(`⚠️ Unauthorized Domain: Please add '${currentHost}' to Authorized domains in Firebase Console > Authentication > Settings > Authorized domains.`);
       } else if (err.code === 'auth/operation-not-allowed') {
         setErrorMsg("Google Sign-In is not enabled in Firebase. Go to Firebase Console > Authentication > Sign-in method > Enable Google.");
-      } else if (err.code === 'auth/unauthorized-domain') {
-        setErrorMsg("This domain (localhost) is not authorized in Firebase Console > Authentication > Settings > Authorized domains.");
       } else if (err.code === 'auth/popup-blocked') {
-        setErrorMsg("Google login popup was blocked by your browser. Please allow popups for localhost.");
+        setErrorMsg("Google login popup was blocked by your browser. Please allow popups for this site.");
       } else {
         setErrorMsg(err.message || "Google Sign-In failed. Please check your credentials.");
       }
