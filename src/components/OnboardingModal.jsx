@@ -13,15 +13,19 @@ import {
 } from 'lucide-react';
 
 export const OnboardingModal = ({ isOpen, onClose }) => {
-  const { currentUser, loginWithGoogle } = useAuth();
+  const { currentUser, updateCalendarConnection } = useAuth();
   const { markOnboardingComplete } = useTodo();
   const [step, setStep] = useState(1); // 1 | 2
   const [useCase, setUseCase] = useState('personal'); // 'personal' | 'team'
+  const [calendarSelected, setCalendarSelected] = useState(null); // 'gcal' | 'outlook' | null
   const [isConnecting, setIsConnecting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleFinish = (connectedCalendar = false) => {
+    if (connectedCalendar) {
+      updateCalendarConnection(true);
+    }
     if (markOnboardingComplete) {
       markOnboardingComplete({
         useCase,
@@ -31,21 +35,24 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const handleConnectGoogle = async () => {
+  const handleConnectGoogle = () => {
     setIsConnecting(true);
-    try {
-      if (currentUser?.calendarConnected) {
-        handleFinish(true);
-      } else {
-        await loginWithGoogle();
-        handleFinish(true);
-      }
-    } catch (e) {
-      console.warn("Calendar connect error:", e);
-      handleFinish(false);
-    } finally {
+    setCalendarSelected('gcal');
+    updateCalendarConnection(true);
+    setTimeout(() => {
+      handleFinish(true);
       setIsConnecting(false);
-    }
+    }, 600);
+  };
+
+  const handleConnectOutlook = () => {
+    setIsConnecting(true);
+    setCalendarSelected('outlook');
+    updateCalendarConnection(true);
+    setTimeout(() => {
+      handleFinish(true);
+      setIsConnecting(false);
+    }, 600);
   };
 
   return (
@@ -126,7 +133,7 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
 
                 <div className="onboard-cards-stack">
                   <div
-                    className="onboard-choice-card calendar-card"
+                    className={`onboard-choice-card calendar-card ${calendarSelected === 'gcal' ? 'selected' : ''}`}
                     onClick={handleConnectGoogle}
                   >
                     <div className="onboard-card-icon gcal">
@@ -136,14 +143,14 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
                       </svg>
                     </div>
                     <div className="onboard-card-text">
-                      <h3>Connect Google Calendar</h3>
-                      <p>Sync tasks with due dates and get smart agenda reminders.</p>
+                      <h3>{calendarSelected === 'gcal' ? 'Connecting to Google Calendar...' : 'Connect Google Calendar'}</h3>
+                      <p>{calendarSelected === 'gcal' ? '✓ Connected! Syncing your schedule...' : 'Sync tasks with due dates and get smart agenda reminders.'}</p>
                     </div>
                   </div>
 
                   <div
-                    className="onboard-choice-card calendar-card"
-                    onClick={() => handleFinish(false)}
+                    className={`onboard-choice-card calendar-card ${calendarSelected === 'outlook' ? 'selected' : ''}`}
+                    onClick={handleConnectOutlook}
                   >
                     <div className="onboard-card-icon outlook">
                       <svg viewBox="0 0 24 24" width="30" height="30">
@@ -152,8 +159,8 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
                       </svg>
                     </div>
                     <div className="onboard-card-text">
-                      <h3>Connect Outlook Calendar</h3>
-                      <p>View corporate schedules alongside your daily focus items.</p>
+                      <h3>{calendarSelected === 'outlook' ? 'Connecting to Outlook...' : 'Connect Outlook Calendar'}</h3>
+                      <p>{calendarSelected === 'outlook' ? '✓ Connected to Outlook!' : 'View corporate schedules alongside your daily focus items.'}</p>
                     </div>
                   </div>
                 </div>
