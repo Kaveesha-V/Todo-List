@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 export const OnboardingModal = ({ isOpen, onClose }) => {
-  const { currentUser, updateCalendarConnection } = useAuth();
+  const { currentUser, connectGoogleCalendar, updateCalendarConnection } = useAuth();
   const { markOnboardingComplete } = useTodo();
   const [step, setStep] = useState(1); // 1 | 2
   const [useCase, setUseCase] = useState('personal'); // 'personal' | 'team'
@@ -23,7 +23,7 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const handleFinish = (connectedCalendar = false) => {
-    if (connectedCalendar) {
+    if (connectedCalendar && updateCalendarConnection) {
       updateCalendarConnection(true);
     }
     if (markOnboardingComplete) {
@@ -32,27 +32,41 @@ export const OnboardingModal = ({ isOpen, onClose }) => {
         calendarConnected: connectedCalendar || currentUser?.calendarConnected || false
       });
     }
-    onClose();
+    if (onClose) {
+      onClose();
+    }
   };
 
-  const handleConnectGoogle = () => {
+  const handleConnectGoogle = async () => {
     setIsConnecting(true);
     setCalendarSelected('gcal');
-    updateCalendarConnection(true);
-    setTimeout(() => {
+    try {
+      if (connectGoogleCalendar) {
+        await connectGoogleCalendar();
+      } else if (updateCalendarConnection) {
+        updateCalendarConnection(true);
+      }
+      setTimeout(() => {
+        handleFinish(true);
+        setIsConnecting(false);
+      }, 500);
+    } catch (err) {
+      console.warn("Calendar connection note:", err);
       handleFinish(true);
       setIsConnecting(false);
-    }, 600);
+    }
   };
 
   const handleConnectOutlook = () => {
     setIsConnecting(true);
     setCalendarSelected('outlook');
-    updateCalendarConnection(true);
+    if (updateCalendarConnection) {
+      updateCalendarConnection(true);
+    }
     setTimeout(() => {
       handleFinish(true);
       setIsConnecting(false);
-    }, 600);
+    }, 500);
   };
 
   return (

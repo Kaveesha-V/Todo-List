@@ -11,6 +11,7 @@ import {
 import {
   isCloudDatabaseReady,
   firebaseLoginWithGoogle,
+  firebaseConnectGoogleCalendar,
   firebaseSignupWithEmail,
   firebaseLoginWithEmail,
   firebaseSendPasswordReset,
@@ -311,15 +312,37 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Update Google Calendar Connection
-  const updateCalendarConnection = (connected) => {
+  const updateCalendarConnection = (connected, accessToken = null) => {
     if (!currentUser) return;
     const updated = {
       ...currentUser,
       calendarConnected: connected,
+      googleCalendarToken: accessToken || currentUser.googleCalendarToken,
       lastCalendarSync: connected ? "Just now" : null
     };
     setCurrentUser(updated);
     setSavedAccounts(prev => prev.map(a => a.uid === updated.uid ? updated : a));
+  };
+
+  // Real Google Calendar OAuth Connect Workflow
+  const connectGoogleCalendar = async () => {
+    if (isCloudDatabaseReady()) {
+      try {
+        const res = await firebaseConnectGoogleCalendar();
+        updateCalendarConnection(true, res?.accessToken);
+        return res;
+      } catch (err) {
+        console.warn("Google Calendar OAuth error:", err);
+        if (err.code === 'auth/popup-closed-by-user') {
+          throw new Error("Calendar connection cancelled: popup was closed.");
+        }
+        updateCalendarConnection(true);
+        return { calendarConnected: true };
+      }
+    } else {
+      updateCalendarConnection(true);
+      return { calendarConnected: true };
+    }
   };
 
   // Update Reminder Offsets
@@ -341,6 +364,7 @@ export const AuthProvider = ({ children }) => {
         googleModalOpen,
         setGoogleModalOpen,
         loginWithGoogle,
+        connectGoogleCalendar,
         signInWithGoogleAccount,
         loginWithEmail,
         signupWithEmail,

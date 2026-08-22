@@ -98,7 +98,7 @@ export const firebaseLoginWithGoogle = async () => {
 };
 
 /**
- * Connect Google Calendar with explicit permission
+ * Connect Google Calendar with real OAuth permissions
  */
 export const firebaseConnectGoogleCalendar = async () => {
   const { auth } = getFirebaseInstance();
@@ -106,11 +106,15 @@ export const firebaseConnectGoogleCalendar = async () => {
   
   const provider = new GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/calendar.events');
+  provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
   provider.setCustomParameters({ prompt: 'consent' });
   
   const result = await signInWithPopup(auth, provider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
-  return credential?.accessToken;
+  return {
+    accessToken: credential?.accessToken || null,
+    user: result.user
+  };
 };
 
 /**
