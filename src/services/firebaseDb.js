@@ -24,6 +24,8 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
   updateProfile,
   onAuthStateChanged,
   signOut
@@ -180,6 +182,24 @@ export const firebaseSendPasswordReset = async (email) => {
   const { auth } = getFirebaseInstance();
   if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
   await sendPasswordResetEmail(auth, email);
+};
+
+/**
+ * Verify Password Reset Code from Email Link
+ */
+export const firebaseVerifyPasswordResetCode = async (oobCode) => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready.");
+  return await verifyPasswordResetCode(auth, oobCode);
+};
+
+/**
+ * Confirm New Password with Reset Code
+ */
+export const firebaseConfirmPasswordReset = async (oobCode, newPassword) => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready.");
+  await confirmPasswordReset(auth, oobCode, newPassword);
 };
 
 /**
