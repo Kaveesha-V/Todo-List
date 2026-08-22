@@ -70,7 +70,7 @@ export const AuthScreen = () => {
       if (err.code === 'auth/popup-closed-by-user') {
         setErrorMsg("Sign-in cancelled: The Google popup was closed.");
       } else if (err.code === 'auth/api-key-not-valid' || (err.message && err.message.includes('api-key-not-valid'))) {
-        setErrorMsg("⚠️ Firebase Auth is not activated yet: Please go to Firebase Console > Authentication > Click 'Get started' > Enable Google, then restart 'npm run dev'.");
+        setErrorMsg("⚠️ Google Identity Toolkit API is not enabled in your Google Cloud project. Please open: https://console.cloud.google.com/apis/library/identitytoolkit.googleapis.com?project=to-dolist-e1532 and click 'ENABLE'.");
       } else if (err.code === 'auth/operation-not-allowed') {
         setErrorMsg("Google Sign-In is not enabled in Firebase. Go to Firebase Console > Authentication > Sign-in method > Enable Google.");
       } else if (err.code === 'auth/unauthorized-domain') {
