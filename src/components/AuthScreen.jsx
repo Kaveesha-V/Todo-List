@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { GoogleOAuthModal } from './GoogleOAuthModal';
 import {
   CheckCircle2,
   Lock,
@@ -22,10 +21,7 @@ export const AuthScreen = () => {
     loginWithGoogle,
     loginWithEmail,
     signupWithEmail,
-    signInWithGoogleAccount,
-    sendPasswordReset,
-    googleModalOpen,
-    setGoogleModalOpen
+    sendPasswordReset
   } = useAuth();
 
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
@@ -70,13 +66,18 @@ export const AuthScreen = () => {
     try {
       await loginWithGoogle();
     } catch (err) {
-      console.warn("Google sign-in attempt:", err);
+      console.error("Firebase Google sign-in error:", err);
       if (err.code === 'auth/popup-closed-by-user') {
-        setIsLoading(false);
-        return;
+        setErrorMsg("Sign-in cancelled: The Google popup was closed before completing.");
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setErrorMsg("Google Sign-In is not enabled in Firebase. Please go to Firebase Console > Authentication > Sign-in method > Enable Google.");
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setErrorMsg("This domain (localhost) is not authorized in Firebase Console > Authentication > Settings > Authorized domains.");
+      } else if (err.code === 'auth/popup-blocked') {
+        setErrorMsg("Google login popup was blocked by your browser. Please allow popups for localhost.");
+      } else {
+        setErrorMsg(err.message || "Google Sign-In failed. Please check your credentials.");
       }
-      // If popup was blocked or Firebase domain requires permission, open the Google popup window
-      setGoogleModalOpen(true);
     } finally {
       setIsLoading(false);
     }
@@ -410,13 +411,6 @@ export const AuthScreen = () => {
           </div>
         </div>
       )}
-
-      {/* Google OAuth Modal */}
-      <GoogleOAuthModal
-        isOpen={googleModalOpen}
-        onClose={() => setGoogleModalOpen(false)}
-        onSignIn={(userData) => signInWithGoogleAccount(userData)}
-      />
     </div>
   );
 };

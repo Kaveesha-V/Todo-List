@@ -10,17 +10,11 @@ import { KanbanBoardView } from './components/KanbanBoardView';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthScreen } from './components/AuthScreen';
-import { GoogleOAuthModal } from './components/GoogleOAuthModal';
 import { ToastContainer } from './components/Toast';
 import { Sparkles, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
 
 const DashboardContent = () => {
-  const {
-    currentUser,
-    googleModalOpen,
-    setGoogleModalOpen,
-    signInWithGoogleAccount
-  } = useAuth();
+  const { currentUser } = useAuth();
   const { viewMode } = useTodo();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -81,13 +75,6 @@ const DashboardContent = () => {
 
       {/* Settings / Reminders Modal */}
       <SettingsModal />
-
-      {/* Google OAuth Modal for connecting Google Calendar */}
-      <GoogleOAuthModal
-        isOpen={googleModalOpen}
-        onClose={() => setGoogleModalOpen(false)}
-        onSignIn={(userData) => signInWithGoogleAccount(userData)}
-      />
 
       {/* Toast Feedback Stack */}
       <ToastContainer />

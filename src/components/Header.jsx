@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export const Header = () => {
-  const { currentUser, setAuthModalOpen } = useAuth();
+  const { currentUser, loginWithGoogle } = useAuth();
   const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
@@ -61,7 +61,7 @@ export const Header = () => {
               <button
                 type="button"
                 className="gcal-connect-header-btn"
-                onClick={() => setGoogleModalOpen(true)}
+                onClick={loginWithGoogle}
                 title="Connect your Google Calendar"
               >
                 <Calendar size={13} />
