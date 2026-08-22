@@ -66,14 +66,15 @@ export const getFirebaseInstance = () => {
 
 /**
  * Real Firebase Google OAuth Popup Workflow
- * Triggers the authentic native Google Sign-in popup from accounts.google.com
+ * Uses standard Google profile scopes for instant, clean, zero-warning sign-in
  */
 export const firebaseLoginWithGoogle = async () => {
   const { auth } = getFirebaseInstance();
   if (!auth) throw new Error("Firebase Auth is not ready. Please verify your .env credentials.");
   
   const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/calendar.events');
+  provider.addScope('email');
+  provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
   
   const result = await signInWithPopup(auth, provider);
@@ -92,6 +93,22 @@ export const firebaseLoginWithGoogle = async () => {
     accessToken: token,
     lastLogin: new Date().toISOString()
   };
+};
+
+/**
+ * Connect Google Calendar with explicit permission
+ */
+export const firebaseConnectGoogleCalendar = async () => {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not ready.");
+  
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar.events');
+  provider.setCustomParameters({ prompt: 'consent' });
+  
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  return credential?.accessToken;
 };
 
 /**
