@@ -7,6 +7,14 @@ import {
   loadStoredTheme,
   saveStoredTheme
 } from '../utils/storage';
+import {
+  isCloudDatabaseReady,
+  subscribeToUserTasks,
+  createTaskInCloud,
+  updateTaskInCloud,
+  deleteTaskInCloud,
+  syncLocalTasksToCloud
+} from '../services/firebaseDb';
 import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
 import { generateDailyDigest, generateSubtasksForTask } from '../utils/aiHelpers';
@@ -26,12 +34,36 @@ export const TodoProvider = ({ children }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
-  // Reload tasks whenever currentUser changes
+  // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.uid) {
       const userTasks = loadUserTasks(currentUser.uid);
       setTasks(userTasks);
+
+      // If Firebase Cloud Database is configured, attach real-time Firestore listener
+      if (isCloudDatabaseReady()) {
+        setIsCloudSyncing(true);
+        const unsubscribe = subscribeToUserTasks(
+          currentUser.uid,
+          (cloudTasks) => {
+            if (cloudTasks && cloudTasks.length > 0) {
+              setTasks(cloudTasks);
+              saveUserTasks(currentUser.uid, cloudTasks);
+            } else if (userTasks && userTasks.length > 0) {
+              // Sync existing local tasks to the cloud on initial connection
+              syncLocalTasksToCloud(currentUser.uid, userTasks);
+            }
+            setIsCloudSyncing(false);
+          },
+          (err) => {
+            console.warn("Firestore sync fallback to local storage:", err);
+            setIsCloudSyncing(false);
+          }
+        );
+        return () => unsubscribe();
+      }
     } else {
       setTasks([]);
     }
@@ -51,7 +83,7 @@ export const TodoProvider = ({ children }) => {
     }
   }, [tasks, currentUser?.uid]);
 
-  // Multi-tab storage listener for real-time synchronization simulation
+  // Multi-tab storage listener for real-time synchronization
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (currentUser && e.key === `aura_tasks_${currentUser.uid}` && e.newValue) {
@@ -123,6 +155,10 @@ export const TodoProvider = ({ children }) => {
 
     setTasks(prev => [newTask, ...prev]);
 
+    if (isCloudDatabaseReady()) {
+      createTaskInCloud(newTask).catch(err => console.warn("Cloud create failed:", err));
+    }
+
     if (newTask.googleEventId) {
       addToast(`Task created & synced to Google Calendar`, 'success');
     } else {
@@ -144,6 +180,9 @@ export const TodoProvider = ({ children }) => {
         if (currentUser?.calendarConnected && updated.dueDate && !updated.googleEventId) {
           updated.googleEventId = `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}`;
         }
+        if (isCloudDatabaseReady()) {
+          updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud update failed:", err));
+        }
         return updated;
       }
       return t;
@@ -153,6 +192,9 @@ export const TodoProvider = ({ children }) => {
   // Delete Task
   const deleteTask = (taskId) => {
     setTasks(prev => prev.filter(t => t.id !== taskId));
+    if (isCloudDatabaseReady()) {
+      deleteTaskInCloud(taskId).catch(err => console.warn("Cloud delete failed:", err));
+    }
     if (activeTask && activeTask.id === taskId) {
       setActiveTask(null);
     }
@@ -175,11 +217,15 @@ export const TodoProvider = ({ children }) => {
           } catch {}
           addToast(`Completed: ${t.title}`, 'success');
         }
-        return {
+        const updated = {
           ...t,
           status: nextStatus,
           updatedAt: new Date().toISOString()
         };
+        if (isCloudDatabaseReady()) {
+          updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud toggle failed:", err));
+        }
+        return updated;
       }
       return t;
     }));
@@ -194,7 +240,11 @@ export const TodoProvider = ({ children }) => {
             confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
           } catch {}
         }
-        return { ...t, status: newStatus, updatedAt: new Date().toISOString() };
+        const updated = { ...t, status: newStatus, updatedAt: new Date().toISOString() };
+        if (isCloudDatabaseReady()) {
+          updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud set status failed:", err));
+        }
+        return updated;
       }
       return t;
     }));
