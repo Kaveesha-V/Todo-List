@@ -20,7 +20,7 @@ export const TaskCard = ({ task }) => {
 
   const isCompleted = task.status === 'done';
   const isSelected = activeTask?.id === task.id;
-  const friendlyDue = formatFriendlyDate(task.dueDate);
+  const friendlyDue = formatFriendlyDate(task.dueDate, task.dueTime);
 
   const subtasksCount = task.subtasks?.length || 0;
   const completedSubtasksCount = task.subtasks?.filter(s => s.done).length || 0;

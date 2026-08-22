@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTodo } from '../context/TodoContext';
 import { useAuth } from '../context/AuthContext';
 import { syncTaskToGoogleCalendarAPI, getGoogleCalendarWebLink } from '../services/googleCalendar';
+import { getOngoingTimeString } from '../utils/dateUtils';
 import { TaskCard } from './TaskCard';
 import {
   Calendar,
@@ -19,7 +20,11 @@ import {
   History,
   LayoutGrid,
   List,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Sun,
+  Sunset,
+  Moon
 } from 'lucide-react';
 
 export const UpcomingTimelineView = () => {
@@ -31,7 +36,7 @@ export const UpcomingTimelineView = () => {
   const [sortOption, setSortOption] = useState('date_asc'); // 'date_asc' | 'priority' | 'gcal_first' | 'alpha'
   const [activeDayAdding, setActiveDayAdding] = useState(null);
   const [inlineTaskTitle, setInlineTaskTitle] = useState('');
-  const [inlineTaskTime, setInlineTaskTime] = useState('09:00');
+  const [inlineTaskTime, setInlineTaskTime] = useState(() => getOngoingTimeString());
   const [daysCount, setDaysCount] = useState(30); // 30 days rolling by default (unlimited expandable)
   const [selectedMonthOffset, setSelectedMonthOffset] = useState(0);
   const [showPastHistory, setShowPastHistory] = useState(false);
@@ -41,6 +46,22 @@ export const UpcomingTimelineView = () => {
   const today = new Date();
   const todayDateStr = today.toISOString().split('T')[0];
   const anchorDate = new Date(today.getFullYear(), today.getMonth() + selectedMonthOffset, 1);
+
+  // When opening add task, refresh to latest ongoing time
+  const handleOpenAddForDay = (dateStr) => {
+    setActiveDayAdding(dateStr);
+    setInlineTaskTime(getOngoingTimeString());
+  };
+
+  // Convert 24h HH:mm to 12h readable string for display
+  const format12Hour = (time24) => {
+    if (!time24) return '09:00 AM';
+    const [h, m] = time24.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    const mStr = String(m || 0).padStart(2, '0');
+    return `${h12}:${mStr} ${period}`;
+  };
 
   // Group tasks into Past and Future
   const { pastTasks, upcomingTasks } = useMemo(() => {
@@ -204,7 +225,7 @@ export const UpcomingTimelineView = () => {
     const newTaskData = {
       title: inlineTaskTitle.trim(),
       dueDate: dateStr,
-      dueTime: inlineTaskTime || '09:00',
+      dueTime: inlineTaskTime || getOngoingTimeString(),
       priority: 'medium',
       tags: ['upcoming', 'gcal'],
       status: 'todo',
@@ -226,7 +247,7 @@ export const UpcomingTimelineView = () => {
 
     addTask(newTaskData);
     if (addToast) {
-      addToast(`Task added & synced to Google Calendar for ${dateStr}! 📅`, "success");
+      addToast(`Scheduled at ${format12Hour(newTaskData.dueTime)} & synced to Google Calendar! 📅`, "success");
     }
 
     setInlineTaskTitle('');
@@ -245,7 +266,6 @@ export const UpcomingTimelineView = () => {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else {
-        // Expand days to include that date
         setDaysCount(prev => prev + 45);
         setTimeout(() => {
           const el2 = document.getElementById(`day-section-${selectedDate}`);
@@ -361,12 +381,12 @@ export const UpcomingTimelineView = () => {
         </div>
       </div>
 
-      {/* Quick Date Jump Picker (Allows jumping to ANY future date) */}
+      {/* Quick Date Jump Picker */}
       <div className="upcoming-jump-bar">
         <span className="jump-label">Jump to any date:</span>
         <input
           type="date"
-          min={todayDateStr} // Block past dates for selection
+          min={todayDateStr} // Block past dates
           value={customJumpDate}
           onChange={handleJumpToDate}
           className="upcoming-date-jump-input"
@@ -480,7 +500,7 @@ export const UpcomingTimelineView = () => {
                   )}
                 </div>
 
-                {/* Inline Add Task Row (Past dates are blocked) */}
+                {/* Inline Add Task Row with Intuitive Ongoing Time Picker */}
                 {day.isPast ? (
                   <div className="upcoming-past-date-notice">
                     <span>Past date · New task additions disabled</span>
@@ -490,24 +510,142 @@ export const UpcomingTimelineView = () => {
                     onSubmit={(e) => handleInlineSubmit(e, day.dateStr)}
                     className="upcoming-inline-add-form animate-fade-in"
                   >
-                    <input
-                      type="text"
-                      placeholder="Schedule task & sync to Google Calendar..."
-                      value={inlineTaskTitle}
-                      onChange={(e) => setInlineTaskTitle(e.target.value)}
-                      autoFocus
-                      className="upcoming-inline-input"
-                    />
-                    <input
-                      type="time"
-                      value={inlineTaskTime}
-                      onChange={(e) => setInlineTaskTime(e.target.value)}
-                      className="upcoming-inline-time-input"
-                      title="Due Time"
-                    />
+                    <div className="inline-form-top-row">
+                      <input
+                        type="text"
+                        placeholder="Task name (e.g. Linux Video, Client Meeting)..."
+                        value={inlineTaskTitle}
+                        onChange={(e) => setInlineTaskTitle(e.target.value)}
+                        autoFocus
+                        className="upcoming-inline-input"
+                      />
+                    </div>
+
+                    {/* Intuitive Ongoing Time Picker Controls */}
+                    <div className="inline-time-picker-panel">
+                      <div className="time-picker-label-row">
+                        <span className="time-picker-heading">
+                          <Clock size={13} />
+                          <span>Schedule Time: <strong>{format12Hour(inlineTaskTime)}</strong></span>
+                        </span>
+
+                        {/* Quick 1-Click Time Presets */}
+                        <div className="time-presets-chips">
+                          <button
+                            type="button"
+                            className="time-chip-btn active-pulse"
+                            onClick={() => setInlineTaskTime(getOngoingTimeString())}
+                            title="Set to Current Live Time"
+                          >
+                            <Zap size={11} />
+                            <span>Now ({format12Hour(getOngoingTimeString())})</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="time-chip-btn"
+                            onClick={() => setInlineTaskTime('09:00')}
+                          >
+                            <Sun size={11} />
+                            <span>Morning (9 AM)</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="time-chip-btn"
+                            onClick={() => setInlineTaskTime('13:00')}
+                          >
+                            <span>1:00 PM</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="time-chip-btn"
+                            onClick={() => setInlineTaskTime('17:00')}
+                          >
+                            <Sunset size={11} />
+                            <span>5:00 PM</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="time-chip-btn"
+                            onClick={() => setInlineTaskTime('20:30')}
+                          >
+                            <Moon size={11} />
+                            <span>8:30 PM</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Custom Time Selector Selects (Easy 12-Hour Dropdowns) */}
+                      <div className="time-selects-custom-row">
+                        <select
+                          className="easy-time-select"
+                          value={(() => {
+                            const [h] = (inlineTaskTime || '09:00').split(':').map(Number);
+                            const h12 = h % 12 || 12;
+                            return String(h12).padStart(2, '0');
+                          })()}
+                          onChange={(e) => {
+                            const newH12 = parseInt(e.target.value, 10);
+                            const [curH, curM] = (inlineTaskTime || '09:00').split(':').map(Number);
+                            const isPM = curH >= 12;
+                            let h24 = newH12 % 12;
+                            if (isPM) h24 += 12;
+                            setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                          }}
+                        >
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                            <option key={h} value={String(h).padStart(2, '0')}>
+                              {h}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="time-colon">:</span>
+                        <select
+                          className="easy-time-select"
+                          value={(() => {
+                            const [, m] = (inlineTaskTime || '09:00').split(':').map(Number);
+                            return String(m || 0).padStart(2, '0');
+                          })()}
+                          onChange={(e) => {
+                            const [curH] = (inlineTaskTime || '09:00').split(':').map(Number);
+                            setInlineTaskTime(`${String(curH).padStart(2, '0')}:${e.target.value}`);
+                          }}
+                        >
+                          {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        
+                        {/* AM/PM Toggle */}
+                        <div className="am-pm-toggle-btns">
+                          <button
+                            type="button"
+                            className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) < 12 ? 'active' : ''}`}
+                            onClick={() => {
+                              const [curH, curM] = inlineTaskTime.split(':').map(Number);
+                              const h24 = curH >= 12 ? curH - 12 : curH;
+                              setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                            }}
+                          >
+                            AM
+                          </button>
+                          <button
+                            type="button"
+                            className={`am-pm-btn ${(parseInt(inlineTaskTime.split(':')[0], 10) || 0) >= 12 ? 'active' : ''}`}
+                            onClick={() => {
+                              const [curH, curM] = inlineTaskTime.split(':').map(Number);
+                              const h24 = curH < 12 ? curH + 12 : curH;
+                              setInlineTaskTime(`${String(h24).padStart(2, '0')}:${String(curM).padStart(2, '0')}`);
+                            }}
+                          >
+                            PM
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="upcoming-inline-actions">
                       <button type="submit" className="upcoming-add-save-btn">
-                        Add & Sync
+                        Add & Sync Task
                       </button>
                       <button
                         type="button"
@@ -522,7 +660,7 @@ export const UpcomingTimelineView = () => {
                   <button
                     type="button"
                     className="upcoming-add-day-btn"
-                    onClick={() => setActiveDayAdding(day.dateStr)}
+                    onClick={() => handleOpenAddForDay(day.dateStr)}
                   >
                     <Plus size={15} />
                     <span>Add task to {day.dayShort} {day.dayNum}</span>

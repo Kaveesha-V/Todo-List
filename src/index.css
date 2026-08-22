@@ -4731,4 +4731,130 @@ button:disabled {
   margin-bottom: 6px;
 }
 
+/* ===================================================================
+   Intuitive Ongoing Time Picker Styles
+   =================================================================== */
+.inline-form-top-row {
+  margin-bottom: 10px;
+}
+
+.inline-time-picker-panel {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.time-picker-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.time-picker-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.time-picker-heading strong {
+  color: var(--primary);
+  font-family: ui-monospace, monospace;
+}
+
+.time-presets-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.time-chip-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.time-chip-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.time-chip-btn.active-pulse {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10B981;
+}
+
+.time-selects-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.easy-time-select {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+
+.easy-time-select option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.time-colon {
+  font-weight: 800;
+  color: var(--text-tertiary);
+}
+
+.am-pm-toggle-btns {
+  display: flex;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.am-pm-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: none;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.am-pm-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+
 
