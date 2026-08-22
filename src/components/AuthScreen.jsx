@@ -68,9 +68,11 @@ export const AuthScreen = () => {
     } catch (err) {
       console.error("Firebase Google sign-in error:", err);
       if (err.code === 'auth/popup-closed-by-user') {
-        setErrorMsg("Sign-in cancelled: The Google popup was closed before completing.");
+        setErrorMsg("Sign-in cancelled: The Google popup was closed.");
+      } else if (err.code === 'auth/api-key-not-valid' || (err.message && err.message.includes('api-key-not-valid'))) {
+        setErrorMsg("⚠️ Firebase Auth is not activated yet: Please go to Firebase Console > Authentication > Click 'Get started' > Enable Google, then restart 'npm run dev'.");
       } else if (err.code === 'auth/operation-not-allowed') {
-        setErrorMsg("Google Sign-In is not enabled in Firebase. Please go to Firebase Console > Authentication > Sign-in method > Enable Google.");
+        setErrorMsg("Google Sign-In is not enabled in Firebase. Go to Firebase Console > Authentication > Sign-in method > Enable Google.");
       } else if (err.code === 'auth/unauthorized-domain') {
         setErrorMsg("This domain (localhost) is not authorized in Firebase Console > Authentication > Settings > Authorized domains.");
       } else if (err.code === 'auth/popup-blocked') {
