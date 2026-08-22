@@ -1,13 +1,15 @@
 import React from 'react';
 import { useTodo } from '../context/TodoContext';
 import { formatFriendlyDate } from '../utils/dateUtils';
+import { getGoogleCalendarWebLink } from '../services/googleCalendar';
 import {
   Check,
   Calendar,
   CheckSquare,
   Trash2,
   Tag,
-  AlertCircle
+  AlertCircle,
+  ExternalLink
 } from 'lucide-react';
 
 export const TaskCard = ({ task }) => {
@@ -27,7 +29,7 @@ export const TaskCard = ({ task }) => {
 
   const handleCardClick = (e) => {
     // If clicking on checkbox or action buttons, don't open drawer
-    if (e.target.closest('.custom-checkbox') || e.target.closest('.card-action-btn')) {
+    if (e.target.closest('.custom-checkbox') || e.target.closest('.card-action-btn') || e.target.closest('a')) {
       return;
     }
     setActiveTask(task);
@@ -41,6 +43,8 @@ export const TaskCard = ({ task }) => {
       default: return 'badge-priority-med';
     }
   };
+
+  const gcalUrl = task.gcalLink || (task.dueDate ? getGoogleCalendarWebLink(task) : null);
 
   return (
     <article
@@ -91,12 +95,20 @@ export const TaskCard = ({ task }) => {
             </span>
           )}
 
-          {/* Google Calendar Synced Badge */}
-          {task.googleEventId && (
-            <span className="badge-item badge-gcal" title="Synced to Google Calendar">
+          {/* Direct Clickable Google Calendar Synced Badge */}
+          {gcalUrl && (
+            <a
+              href={gcalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="badge-item badge-gcal clickable"
+              title="Open event on Google Calendar"
+              onClick={(e) => e.stopPropagation()}
+            >
               <Calendar size={11} />
               <span>G-Cal</span>
-            </span>
+              <ExternalLink size={10} style={{ marginLeft: '3px', opacity: 0.8 }} />
+            </a>
           )}
 
           {/* Tags */}

@@ -19,7 +19,12 @@ import {
   Sparkles,
   LayoutGrid,
   Hash,
-  CheckCircle2
+  CheckCircle2,
+  Settings,
+  LogOut,
+  FolderPlus,
+  Trash2,
+  X
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
@@ -30,6 +35,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
     tasks,
     projects,
     addProject,
+    deleteProject,
     setIsSettingsOpen,
     setOnboardingOpen
   } = useTodo();
@@ -60,6 +66,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
   };
 
   return (
+    <>
     <aside className={`todoist-sidebar ${isOpen ? 'open' : 'closed'}`}>
       {/* Top User Profile Header */}
       <div className="sidebar-user-header">
@@ -272,18 +279,32 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
             )}
 
             {projects.map((proj) => (
-              <button
+              <div
                 key={proj.id}
-                type="button"
                 className={`sidebar-project-item ${activeNavTab === `project_${proj.id}` ? 'active' : ''}`}
-                onClick={() => setActiveNavTab(`project_${proj.id}`)}
+                onClick={() => {
+                  setActiveNavTab(`project_${proj.id}`);
+                  if (window.innerWidth <= 768 && onToggle) onToggle();
+                }}
               >
                 <span className="project-color-dot" style={{ backgroundColor: proj.color || '#6366F1' }}></span>
                 <span className="project-name">{proj.name}</span>
                 <span className="project-count">
                   {tasks.filter(t => !t.completed && (t.projectId === proj.id || t.tags?.includes(proj.name.toLowerCase()))).length || ''}
                 </span>
-              </button>
+                <button
+                  type="button"
+                  className="project-remove-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteProject(proj.id);
+                  }}
+                  title={`Remove ${proj.name} project`}
+                  aria-label={`Remove ${proj.name} project`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -309,5 +330,9 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         </button>
       </div>
     </aside>
+    {isOpen && (
+      <div className="sidebar-mobile-backdrop active" onClick={onToggle} />
+    )}
+    </>
   );
 };

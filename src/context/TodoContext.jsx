@@ -15,7 +15,12 @@ import {
   deleteTaskInCloud,
   syncLocalTasksToCloud
 } from '../services/firebaseDb';
-import { updateGoogleCalendarEventStatus } from '../services/googleCalendar';
+import {
+  updateGoogleCalendarEventStatus,
+  syncTaskToGoogleCalendarAPI,
+  getGoogleCalendarWebLink
+} from '../services/googleCalendar';
+import { getLocalDateString } from '../utils/dateUtils';
 import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
 import { generateDailyDigest, generateSubtasksForTask } from '../utils/aiHelpers';
@@ -93,7 +98,16 @@ export const TodoProvider = ({ children }) => {
       try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
       return updated;
     });
-    addToast(`Project #${name} has been added.`, "success");
+    addToast(`Project #${name} created`, "success");
+  };
+
+  const deleteProject = (projectId) => {
+    setProjects(prev => {
+      const updated = prev.filter(p => p.id !== projectId && p.name.toLowerCase() !== String(projectId).toLowerCase());
+      try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+    addToast("Project removed", "info");
   };
 
   // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
@@ -111,14 +125,11 @@ export const TodoProvider = ({ children }) => {
             if (cloudTasks && cloudTasks.length > 0) {
               setTasks(cloudTasks);
               saveUserTasks(currentUser.uid, cloudTasks);
-            } else if (userTasks && userTasks.length > 0) {
-              // Sync existing local tasks to the cloud on initial connection
-              syncLocalTasksToCloud(currentUser.uid, userTasks);
             }
             setIsCloudSyncing(false);
           },
-          (err) => {
-            console.warn("Firestore sync fallback to local storage:", err);
+          (error) => {
+            console.warn("Real-time cloud database sync warning:", error);
             setIsCloudSyncing(false);
           }
         );
@@ -127,8 +138,7 @@ export const TodoProvider = ({ children }) => {
     } else {
       setTasks([]);
     }
-    setActiveTask(null);
-  }, [currentUser?.uid]);
+  }, [currentUser]);
 
   // Apply theme to DOM document
   useEffect(() => {
@@ -169,7 +179,7 @@ export const TodoProvider = ({ children }) => {
   }, [tasks]);
 
   // Add Task (Natural Language or Structured)
-  const addTask = (input) => {
+  const addTask = async (input) => {
     if (!currentUser) {
       addToast("Please sign in to add tasks", "error");
       return null;
@@ -184,18 +194,64 @@ export const TodoProvider = ({ children }) => {
 
     if (!parsed.title || !parsed.title.trim()) return null;
 
+    let finalDueDate = parsed.dueDate || null;
+    let finalDueTime = parsed.dueTime || null;
+
+    if (finalDueDate && finalDueDate.includes('T')) {
+      const d = new Date(finalDueDate);
+      if (!isNaN(d.getTime())) {
+        finalDueDate = getLocalDateString(d);
+        if (!finalDueTime) {
+          const pad = (n) => String(n).padStart(2, '0');
+          finalDueTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+      }
+    }
+
+    let gcalLink = parsed.gcalLink || (finalDueDate ? getGoogleCalendarWebLink({
+      title: parsed.title,
+      dueDate: finalDueDate,
+      dueTime: finalDueTime,
+      priority: parsed.priority,
+      description: parsed.description
+    }) : null);
+
+    let gcalEventId = parsed.gcalEventId || null;
+
+    // Automatic direct Google Calendar REST API event creation if connected
+    if (currentUser?.calendarConnected && currentUser?.googleCalendarToken && finalDueDate && !gcalEventId) {
+      try {
+        const syncRes = await syncTaskToGoogleCalendarAPI(currentUser.googleCalendarToken, {
+          title: parsed.title,
+          dueDate: finalDueDate,
+          dueTime: finalDueTime,
+          priority: parsed.priority,
+          description: parsed.description
+        });
+        if (syncRes?.eventId) {
+          gcalEventId = syncRes.eventId;
+          gcalLink = syncRes.htmlLink || gcalLink;
+        }
+      } catch (err) {
+        console.warn("Google Calendar direct sync notice:", err);
+      }
+    }
+
     const newTask = {
-      id: `task_${Date.now()}`,
+      id: parsed.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       userId: currentUser.uid,
       title: parsed.title.trim(),
       description: parsed.description || "",
-      dueDate: parsed.dueDate || null,
+      dueDate: finalDueDate,
+      dueTime: finalDueTime,
       priority: parsed.priority || "medium",
-      status: "todo",
+      status: parsed.status || "todo",
       tags: parsed.tags && parsed.tags.length > 0 ? parsed.tags : ["general"],
       subtasks: parsed.subtasks || [],
-      googleEventId: (currentUser.calendarConnected && parsed.dueDate) ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
-      reminderOffsetsMinutes: currentUser.reminderOffsets || [60],
+      gcalEventId,
+      gcalLink,
+      gcalSynced: Boolean(gcalEventId || parsed.gcalSynced || currentUser.calendarConnected),
+      reminderOffsetsMinutes: currentUser.reminderOffsets || [30],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -206,8 +262,8 @@ export const TodoProvider = ({ children }) => {
       createTaskInCloud(newTask).catch(err => console.warn("Cloud create failed:", err));
     }
 
-    if (newTask.googleEventId) {
-      addToast(`Task created & synced to Google Calendar`, 'success');
+    if (gcalEventId) {
+      addToast(`Task created & synced to Google Calendar (30m reminder active)`, 'success');
     } else {
       addToast(`Task added successfully`, 'success');
     }
@@ -391,6 +447,7 @@ export const TodoProvider = ({ children }) => {
         setActiveNavTab,
         projects,
         addProject,
+        deleteProject,
         onboardingOpen,
         setOnboardingOpen,
         markOnboardingComplete,

@@ -110,9 +110,15 @@ export const parseNaturalLanguageTask = (rawInput) => {
     text = text.replace(/\bthis weekend\b/gi, '');
   }
 
+  let dueTime = null;
+  let formattedDueDate = null;
+
   if (hasDate) {
     targetDate.setHours(targetHour, targetMinute, 0, 0);
-    dueDate = targetDate.toISOString();
+    const pad = (n) => String(n).padStart(2, '0');
+    formattedDueDate = `${targetDate.getFullYear()}-${pad(targetDate.getMonth() + 1)}-${pad(targetDate.getDate())}`;
+    dueTime = `${pad(targetHour)}:${pad(targetMinute)}`;
+    dueDate = formattedDueDate;
   }
 
   // 4. Clean up Title: Remove prefix noise like "remind me to", "i need to", "don't forget to", "todo:"
@@ -139,7 +145,8 @@ export const parseNaturalLanguageTask = (rawInput) => {
 
   return {
     title: cleanTitle || rawInput.trim(),
-    dueDate,
+    dueDate: formattedDueDate,
+    dueTime,
     priority,
     tags,
     detectedTokens

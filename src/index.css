@@ -5336,6 +5336,217 @@ button:disabled {
   transform: scale(1.05);
 }
 
+/* ===================================================================
+   Animated Ambient Glowing Background Mesh
+   =================================================================== */
+body::before, body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.18;
+  filter: blur(90px);
+}
+
+[data-theme='dark'] body::before {
+  top: -10%;
+  left: 15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #6366F1, transparent 70%);
+  animation: floatOrb1 18s ease-in-out infinite alternate;
+}
+
+[data-theme='dark'] body::after {
+  bottom: -10%;
+  right: 15%;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, #A855F7, transparent 70%);
+  animation: floatOrb2 22s ease-in-out infinite alternate;
+}
+
+[data-theme='light'] body::before {
+  top: -10%;
+  left: 15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #818CF8, transparent 70%);
+  opacity: 0.12;
+  animation: floatOrb1 18s ease-in-out infinite alternate;
+}
+
+[data-theme='light'] body::after {
+  bottom: -10%;
+  right: 15%;
+  width: 550px;
+  height: 550px;
+  background: radial-gradient(circle, #C084FC, transparent 70%);
+  opacity: 0.12;
+  animation: floatOrb2 22s ease-in-out infinite alternate;
+}
+
+@keyframes floatOrb1 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.15); }
+  100% { transform: translate(-40px, 70px) scale(0.95); }
+}
+
+@keyframes floatOrb2 {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, -40px) scale(1.1); }
+  100% { transform: translate(40px, -60px) scale(1.05); }
+}
+
+/* ===================================================================
+   Project Delete Button & Clickable G-Cal Badges
+   =================================================================== */
+.project-remove-btn {
+  opacity: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: auto;
+}
+
+.sidebar-project-item:hover .project-remove-btn {
+  opacity: 1;
+}
+
+.project-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
+
+.badge-item.badge-gcal.clickable {
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.badge-item.badge-gcal.clickable:hover {
+  background: rgba(66, 133, 244, 0.25);
+  transform: translateY(-1px);
+  border-color: rgba(66, 133, 244, 0.5);
+}
+
+/* ===================================================================
+   Full Mobile Responsiveness (< 768px and < 480px)
+   =================================================================== */
+@media (max-width: 768px) {
+  .app-workspace-layout {
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .app-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+    z-index: 95;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .app-main-column {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .ai-workspace-header-btn span {
+    display: none;
+  }
+
+  .ai-workspace-header-btn {
+    padding: 6px 10px;
+  }
+
+  .upcoming-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .upcoming-header-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .time-picker-label-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .time-presets-chips {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .ai-assistant-drawer {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 1.1rem;
+  }
+
+  .live-clock-widget {
+    font-size: 0.76rem;
+    padding: 4px 8px;
+  }
+
+  .sync-status-indicator {
+    display: none;
+  }
+
+  .upcoming-jump-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .upcoming-date-jump-input {
+    width: 100%;
+  }
+
+  .time-selects-custom-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+
 
 
 
