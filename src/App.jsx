@@ -1,4 +1,5 @@
 import React from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { TodoProvider, useTodo } from './context/TodoContext';
 import { Header } from './components/Header';
 import { AIDailyDigest } from './components/AIDailyDigest';
@@ -8,10 +9,22 @@ import { TaskListView } from './components/TaskListView';
 import { KanbanBoardView } from './components/KanbanBoardView';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { SettingsModal } from './components/SettingsModal';
+import { AuthScreen } from './components/AuthScreen';
 import { ToastContainer } from './components/Toast';
 
-const MainDashboard = () => {
+const DashboardContent = () => {
+  const { currentUser, authModalOpen } = useAuth();
   const { viewMode } = useTodo();
+
+  // If no user is logged in, show the secure Auth Screen
+  if (!currentUser) {
+    return (
+      <div className="app-container">
+        <AuthScreen />
+        <ToastContainer />
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -43,6 +56,13 @@ const MainDashboard = () => {
       {/* Settings / Reminders Modal */}
       <SettingsModal />
 
+      {/* Auth Modal for adding secondary accounts */}
+      {authModalOpen && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <AuthScreen />
+        </div>
+      )}
+
       {/* Toast Feedback Stack */}
       <ToastContainer />
     </div>
@@ -51,9 +71,11 @@ const MainDashboard = () => {
 
 export function App() {
   return (
-    <TodoProvider>
-      <MainDashboard />
-    </TodoProvider>
+    <AuthProvider>
+      <TodoProvider>
+        <DashboardContent />
+      </TodoProvider>
+    </AuthProvider>
   );
 }
 

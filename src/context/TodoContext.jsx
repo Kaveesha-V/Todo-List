@@ -1,31 +1,42 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { INITIAL_TASKS, INITIAL_USER } from '../mockData/initialTasks';
+import { useAuth } from './AuthContext';
 import {
-  loadStoredTasks,
-  saveStoredTasks,
-  loadStoredUser,
-  saveStoredUser,
+  loadUserTasks,
+  saveUserTasks,
   loadStoredTheme,
   saveStoredTheme
 } from '../utils/storage';
+import { INITIAL_TASKS } from '../mockData/initialTasks';
 import { parseNaturalLanguageTask } from '../utils/nlpParser';
 import { generateDailyDigest, generateSubtasksForTask } from '../utils/aiHelpers';
 
 const TodoContext = createContext(null);
 
 export const TodoProvider = ({ children }) => {
-  const [tasks, setTasks] = useState(() => loadStoredTasks(INITIAL_TASKS));
-  const [user, setUser] = useState(() => loadStoredUser(INITIAL_USER));
+  const { currentUser, updateCalendarConnection, updateReminderOffsets } = useAuth();
+
+  const [tasks, setTasks] = useState(() => currentUser ? loadUserTasks(currentUser.uid) : []);
   const [theme, setTheme] = useState(() => loadStoredTheme());
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all'); // 'all' | 'today' | 'upcoming' | 'high' | 'done'
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [selectedTag, setSelectedTag] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
+
+  // Reload tasks whenever currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      const userTasks = loadUserTasks(currentUser.uid);
+      setTasks(userTasks);
+    } else {
+      setTasks([]);
+    }
+    setActiveTask(null);
+  }, [currentUser?.uid]);
 
   // Apply theme to DOM document
   useEffect(() => {
@@ -33,20 +44,17 @@ export const TodoProvider = ({ children }) => {
     saveStoredTheme(theme);
   }, [theme]);
 
-  // Sync tasks to LocalStorage
+  // Persist tasks strictly scoped to current user
   useEffect(() => {
-    saveStoredTasks(tasks);
-  }, [tasks]);
-
-  // Sync user settings to LocalStorage
-  useEffect(() => {
-    saveStoredUser(user);
-  }, [user]);
+    if (currentUser) {
+      saveUserTasks(currentUser.uid, tasks);
+    }
+  }, [tasks, currentUser?.uid]);
 
   // Multi-tab storage listener for real-time synchronization simulation
   useEffect(() => {
     const handleStorageChange = (e) => {
-      if (e.key === 'aura_tasks_v1' && e.newValue) {
+      if (currentUser && e.key === `aura_tasks_${currentUser.uid}` && e.newValue) {
         try {
           setTasks(JSON.parse(e.newValue));
         } catch (err) {
@@ -56,9 +64,9 @@ export const TodoProvider = ({ children }) => {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [currentUser?.uid]);
 
-  // Sync activeTask state when task updates
+  // Keep activeTask in sync with tasks array
   useEffect(() => {
     if (activeTask) {
       const fresh = tasks.find(t => t.id === activeTask.id);
@@ -83,6 +91,11 @@ export const TodoProvider = ({ children }) => {
 
   // Add Task (Natural Language or Structured)
   const addTask = (input) => {
+    if (!currentUser) {
+      addToast("Please sign in to add tasks", "error");
+      return null;
+    }
+
     let parsed;
     if (typeof input === 'string') {
       parsed = parseNaturalLanguageTask(input);
@@ -94,7 +107,7 @@ export const TodoProvider = ({ children }) => {
 
     const newTask = {
       id: `task_${Date.now()}`,
-      userId: user.uid,
+      userId: currentUser.uid,
       title: parsed.title.trim(),
       description: parsed.description || "",
       dueDate: parsed.dueDate || null,
@@ -102,8 +115,8 @@ export const TodoProvider = ({ children }) => {
       status: "todo",
       tags: parsed.tags && parsed.tags.length > 0 ? parsed.tags : ["general"],
       subtasks: parsed.subtasks || [],
-      googleEventId: (user.calendarConnected && parsed.dueDate) ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
-      reminderOffsetsMinutes: user.reminderOffsets || [60],
+      googleEventId: (currentUser.calendarConnected && parsed.dueDate) ? `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}` : null,
+      reminderOffsetsMinutes: currentUser.reminderOffsets || [60],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -128,8 +141,7 @@ export const TodoProvider = ({ children }) => {
           ...updates,
           updatedAt: new Date().toISOString()
         };
-        // Auto-assign googleEventId if calendar connected and dueDate added
-        if (user.calendarConnected && updated.dueDate && !updated.googleEventId) {
+        if (currentUser?.calendarConnected && updated.dueDate && !updated.googleEventId) {
           updated.googleEventId = `gcal_evt_${Math.floor(100000 + Math.random() * 900000)}`;
         }
         return updated;
@@ -153,7 +165,6 @@ export const TodoProvider = ({ children }) => {
       if (t.id === taskId) {
         const nextStatus = t.status === 'done' ? 'todo' : 'done';
         if (nextStatus === 'done') {
-          // Trigger celebratory confetti
           try {
             confetti({
               particleCount: 45,
@@ -174,7 +185,7 @@ export const TodoProvider = ({ children }) => {
     }));
   };
 
-  // Set Status explicitly (Kanban or Detail)
+  // Set Status explicitly
   const setTaskStatus = (taskId, newStatus) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
@@ -245,12 +256,17 @@ export const TodoProvider = ({ children }) => {
     addToast("Synced with Google Calendar event", "success");
   };
 
-  // Reset to initial mock data
+  // Reset to initial mock data for current user
   const resetDemoData = () => {
-    setTasks(INITIAL_TASKS);
-    setUser(INITIAL_USER);
+    if (!currentUser) return;
+    const populated = INITIAL_TASKS.map(t => ({
+      ...t,
+      userId: currentUser.uid,
+      id: `task_${Date.now()}_${Math.random()}`
+    }));
+    setTasks(populated);
     setActiveTask(null);
-    addToast("Reset to sample tasks", "info");
+    addToast("Loaded sample tasks", "info");
   };
 
   // Computed AI Digest
@@ -260,8 +276,7 @@ export const TodoProvider = ({ children }) => {
     <TodoContext.Provider
       value={{
         tasks,
-        user,
-        setUser,
+        user: currentUser,
         theme,
         toggleTheme,
         viewMode,
@@ -292,7 +307,9 @@ export const TodoProvider = ({ children }) => {
         deleteSubtask,
         generateAISubtasks,
         syncTaskToGoogleCalendar,
-        resetDemoData
+        resetDemoData,
+        updateCalendarConnection,
+        updateReminderOffsets
       }}
     >
       {children}

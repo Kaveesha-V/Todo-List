@@ -1,9 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { useTodo } from '../context/TodoContext';
-import { Sparkles, Sun, Moon, Settings, CheckCircle2, Calendar } from 'lucide-react';
+import { AccountMenu } from './AccountMenu';
+import {
+  Sparkles,
+  Sun,
+  Moon,
+  Settings,
+  CheckCircle2,
+  Calendar,
+  LogIn,
+  ChevronDown
+} from 'lucide-react';
 
 export const Header = () => {
-  const { theme, toggleTheme, setIsSettingsOpen, user } = useTodo();
+  const { currentUser, setAuthModalOpen } = useAuth();
+  const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   return (
     <header className="app-header">
@@ -33,7 +46,7 @@ export const Header = () => {
           </div>
 
           {/* Google Calendar Connected Chip */}
-          {user.calendarConnected && (
+          {currentUser?.calendarConnected && (
             <div
               className="sync-status-indicator"
               style={{ cursor: 'pointer', background: 'var(--gcal-bg)', borderColor: 'var(--gcal-border)', color: 'var(--gcal-blue)' }}
@@ -65,17 +78,37 @@ export const Header = () => {
             <Settings size={18} />
           </button>
 
-          {/* User Profile */}
-          <button
-            className="user-profile-btn"
-            onClick={() => setIsSettingsOpen(true)}
-            title="User Account"
-          >
-            <div className="user-avatar">
-              {user.displayName.charAt(0)}
+          {/* User Account / Profile Button */}
+          {currentUser ? (
+            <div style={{ position: 'relative' }}>
+              <button
+                className="user-profile-btn"
+                onClick={() => setAccountMenuOpen(!accountMenuOpen)}
+                title="Account Menu & Switcher"
+                aria-expanded={accountMenuOpen}
+              >
+                <div className="user-avatar">
+                  {currentUser.displayName.charAt(0)}
+                </div>
+                <span>{currentUser.displayName.split(' ')[0]}</span>
+                <ChevronDown size={13} style={{ color: 'var(--text-tertiary)' }} />
+              </button>
+
+              <AccountMenu
+                isOpen={accountMenuOpen}
+                onClose={() => setAccountMenuOpen(false)}
+              />
             </div>
-            <span>{user.displayName.split(' ')[0]}</span>
-          </button>
+          ) : (
+            <button
+              className="nlp-submit-btn"
+              style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+              onClick={() => setAuthModalOpen(true)}
+            >
+              <LogIn size={15} />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
