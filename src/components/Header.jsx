@@ -45,17 +45,29 @@ export const Header = () => {
             <span>Live Sync</span>
           </div>
 
-          {/* Google Calendar Connected Chip */}
-          {currentUser?.calendarConnected && (
-            <div
-              className="sync-status-indicator"
-              style={{ cursor: 'pointer', background: 'var(--gcal-bg)', borderColor: 'var(--gcal-border)', color: 'var(--gcal-blue)' }}
-              onClick={() => setIsSettingsOpen(true)}
-              title="Google Calendar Synced"
-            >
-              <Calendar size={13} />
-              <span>G-Cal Linked</span>
-            </div>
+          {/* Google Calendar Link Button or Synced Chip */}
+          {currentUser && (
+            currentUser.calendarConnected ? (
+              <div
+                className="sync-status-indicator"
+                style={{ cursor: 'pointer', background: 'var(--gcal-bg)', borderColor: 'var(--gcal-border)', color: 'var(--gcal-blue)' }}
+                onClick={() => setIsSettingsOpen(true)}
+                title="Google Calendar Synced"
+              >
+                <Calendar size={13} />
+                <span>G-Cal Linked</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="gcal-connect-header-btn"
+                onClick={() => setGoogleModalOpen(true)}
+                title="Connect your Google Calendar"
+              >
+                <Calendar size={13} />
+                <span>Connect Google Calendar</span>
+              </button>
+            )
           )}
 
           {/* Theme Toggle Button */}
