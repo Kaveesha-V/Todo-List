@@ -36,6 +36,8 @@ export const AuthScreen = () => {
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const slides = [
     {
@@ -129,12 +131,28 @@ export const AuthScreen = () => {
 
   const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!forgotEmail.trim()) return;
+    setForgotError('');
+    const cleanForgotEmail = forgotEmail.trim().toLowerCase();
+    if (!cleanForgotEmail) {
+      setForgotError("Please enter your email address.");
+      return;
+    }
+
+    setForgotLoading(true);
     try {
-      await sendPasswordReset(forgotEmail);
+      await sendPasswordReset(cleanForgotEmail);
       setForgotSent(true);
     } catch (err) {
-      setErrorMsg(err.message || "Could not send reset link.");
+      console.error("Password reset error:", err);
+      if (err.code === 'auth/user-not-found') {
+        setForgotError("No account found with this email address. Try creating an account or sign in with Google.");
+      } else if (err.code === 'auth/invalid-email') {
+        setForgotError("Please enter a valid email address.");
+      } else {
+        setForgotError(err.message || "Could not send reset email. Please try again.");
+      }
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -375,17 +393,44 @@ export const AuthScreen = () => {
 
       {/* Forgot Password Modal */}
       {forgotPasswordOpen && (
-        <div className="modal-backdrop" onClick={() => setForgotPasswordOpen(false)}>
+        <div className="modal-backdrop" onClick={() => { setForgotPasswordOpen(false); setForgotSent(false); setForgotError(''); }}>
           <div className="forgot-password-card" onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '1.15rem' }}>Reset your password</h3>
             <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '0 0 16px 0' }}>
-              Enter your email address and we'll send you a password reset link.
+              Enter your registered email address and Firebase will send you a password reset link.
             </p>
 
+            {forgotError && (
+              <div className="auth-error-banner" style={{ marginBottom: '12px' }}>
+                <AlertCircle size={15} />
+                <span>{forgotError}</span>
+              </div>
+            )}
+
             {forgotSent ? (
-              <div className="forgot-success-box">
-                <CheckCircle2 size={18} style={{ color: '#10B981' }} />
-                <span>Password reset link sent to <strong>{forgotEmail}</strong>. Please check your inbox.</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div className="forgot-success-box">
+                  <CheckCircle2 size={20} style={{ color: '#10B981', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>Password reset link sent!</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      We sent a reset link to <strong>{forgotEmail}</strong>. Please check your inbox.
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                      💡 <em>Tip: If you don't see it within a minute, check your <strong>Spam / Junk</strong> or <strong>Promotions</strong> folder.</em>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    className="webflow-continue-btn"
+                    style={{ width: 'auto', padding: '8px 20px', marginTop: 0 }}
+                    onClick={() => { setForgotPasswordOpen(false); setForgotSent(false); setForgotError(''); }}
+                  >
+                    Back to Log In
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleForgotPasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -402,7 +447,7 @@ export const AuthScreen = () => {
                   <button
                     type="button"
                     className="google-secondary-btn"
-                    onClick={() => setForgotPasswordOpen(false)}
+                    onClick={() => { setForgotPasswordOpen(false); setForgotError(''); }}
                   >
                     Cancel
                   </button>
@@ -410,8 +455,9 @@ export const AuthScreen = () => {
                     type="submit"
                     className="webflow-continue-btn"
                     style={{ width: 'auto', padding: '8px 18px', marginTop: 0 }}
+                    disabled={forgotLoading}
                   >
-                    Send Reset Link
+                    {forgotLoading ? 'Sending...' : 'Send Reset Link'}
                   </button>
                 </div>
               </form>

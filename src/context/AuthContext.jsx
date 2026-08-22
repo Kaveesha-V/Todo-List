@@ -193,7 +193,19 @@ export const AuthProvider = ({ children }) => {
         return user;
       } catch (err) {
         console.warn("Firebase email login error:", err);
-        throw new Error(err.message || "Invalid email or password.");
+        if (
+          err.code === 'auth/invalid-credential' ||
+          err.code === 'auth/wrong-password' ||
+          err.code === 'auth/user-not-found'
+        ) {
+          throw new Error(
+            "Incorrect password or user not found. If you previously signed in with Google, please click 'Continue with Google', or click 'Forgot your password?' to set a new password."
+          );
+        } else if (err.code === 'auth/user-disabled') {
+          throw new Error("This user account has been disabled by an administrator.");
+        } else {
+          throw new Error(err.message || "Invalid email or password.");
+        }
       }
     }
 
@@ -228,7 +240,15 @@ export const AuthProvider = ({ children }) => {
         return user;
       } catch (err) {
         console.warn("Firebase email signup error:", err);
-        throw new Error(err.message || "Could not create account.");
+        if (err.code === 'auth/email-already-in-use') {
+          throw new Error(
+            "An account with this email already exists. Please Log In or click 'Continue with Google'."
+          );
+        } else if (err.code === 'auth/weak-password') {
+          throw new Error("Password must be at least 6 characters long.");
+        } else {
+          throw new Error(err.message || "Could not create account.");
+        }
       }
     }
 
