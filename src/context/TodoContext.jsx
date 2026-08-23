@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { useAuth } from './AuthContext';
 import {
@@ -96,6 +96,9 @@ export const TodoProvider = ({ children }) => {
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
 
+  // Global persistent set of alerted task keys for the session (prevents flood/rush of duplicate notifications)
+  const alertedRef = useRef(new Set());
+
   // Update state ONLY if tasks actually changed — eliminates layout collapse and scroll jumping
   const updateTasksIfChanged = (incomingTasks) => {
     if (!Array.isArray(incomingTasks)) return;
@@ -110,17 +113,26 @@ export const TodoProvider = ({ children }) => {
     });
   };
 
-  // Toast Helper (defined before other functions to prevent TDZ ReferenceError)
+  // Toast Helper with Deduplication & Max 2 Active Toasts (prevents toast stacking/rush)
   const addToast = (input, type = 'info', icon = null) => {
-    const id = `toast_${Date.now()}_${Math.random()}`;
     const msg = typeof input === 'string' ? input : (input?.message || input?.title || 'Notification');
     const toastType = typeof input === 'object' && input?.type ? input.type : type;
     const toastIcon = typeof input === 'object' && input?.icon ? input.icon : icon;
     
-    setToasts(prev => [...prev, { id, message: msg, type: toastType, icon: toastIcon }]);
+    setToasts(prev => {
+      // If exact same message is already visible, do not duplicate
+      if (prev.some(t => t.message === msg)) {
+        return prev;
+      }
+      const id = `toast_${Date.now()}_${Math.random()}`;
+      // Keep only at most 2 toasts on screen
+      const trimmed = prev.slice(-1);
+      return [...trimmed, { id, message: msg, type: toastType, icon: toastIcon }];
+    });
+
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3800);
+      setToasts(prev => prev.filter(t => t.message !== msg));
+    }, 4500);
   };
 
   const removeToast = (id) => {
@@ -296,10 +308,9 @@ export const TodoProvider = ({ children }) => {
     }
   }, [tasks]);
 
-  // 24/7 Live Task Reminder & Alarm Engine (Chime + In-App Toast + Web Notification)
+  // 24/7 Live Task Reminder Engine (Alerts Exactly ONCE per task - No Flooding)
   useEffect(() => {
     requestBrowserNotificationPermission();
-    const alertedSet = new Set();
 
     const checkReminders = () => {
       const now = new Date();
@@ -317,31 +328,30 @@ export const TodoProvider = ({ children }) => {
           const taskTimeInMinutes = (tHour || 0) * 60 + (tMin || 0);
           const diffMinutes = taskTimeInMinutes - currentTimeInMinutes;
 
-          // 1. Due Right Now (within 10 min window)
-          if (diffMinutes <= 0 && diffMinutes >= -15) {
-            const alertKey = `due_${task.id}_${task.dueTime}`;
-            if (!alertedSet.has(alertKey)) {
-              alertedSet.add(alertKey);
+          // 1. Due Right Now (0 min window) - Alerts EXACTLY ONCE
+          if (diffMinutes <= 0 && diffMinutes >= -5) {
+            const alertKey = `due_${task.id}_${task.dueTime}_${todayStr}`;
+            if (!alertedRef.current.has(alertKey)) {
+              alertedRef.current.add(alertKey);
               playNotificationChime('urgent');
               addToast(`🚨 REMINDER: "${task.title}" is due right now (${task.dueTime})!`, 'warning');
               sendBrowserNotification(
                 `🚨 Task Reminder: ${task.title}`,
-                `Scheduled for ${task.dueTime}. Priority: ${task.priority.toUpperCase()}`,
+                `Scheduled for ${task.dueTime}. Priority: ${(task.priority || 'medium').toUpperCase()}`,
                 `task_due_${task.id}`
               );
 
-              // Live Email Alert sent directly to logged-in user email
+              // Send email in background without extra popup toast
               if (currentUser?.email) {
                 sendLiveTaskEmailAlert(currentUser.email, task);
-                addToast(`📧 Task alert email sent to ${currentUser.email}`, 'info');
               }
             }
           }
-          // 2. 30 Minutes Before Reminder
+          // 2. 30 Minutes Before Reminder - Alerts EXACTLY ONCE
           else if (diffMinutes === 30 || (diffMinutes <= 30 && diffMinutes >= 28)) {
-            const alertKey = `30m_${task.id}_${task.dueTime}`;
-            if (!alertedSet.has(alertKey)) {
-              alertedSet.add(alertKey);
+            const alertKey = `30m_${task.id}_${task.dueTime}_${todayStr}`;
+            if (!alertedRef.current.has(alertKey)) {
+              alertedRef.current.add(alertKey);
               playNotificationChime('standard');
               addToast(`🔔 30-Min Reminder: "${task.title}" starts in 30 minutes (${task.dueTime})!`, 'info');
               sendBrowserNotification(
@@ -350,7 +360,6 @@ export const TodoProvider = ({ children }) => {
                 `task_30m_${task.id}`
               );
 
-              // Live 30-min Email Alert sent directly to logged-in user email
               if (currentUser?.email) {
                 sendLiveTaskEmailAlert(currentUser.email, task);
               }
@@ -361,9 +370,9 @@ export const TodoProvider = ({ children }) => {
     };
 
     checkReminders();
-    const interval = setInterval(checkReminders, 6000);
+    const interval = setInterval(checkReminders, 12000);
     return () => clearInterval(interval);
-  }, [tasks]);
+  }, [tasks, currentUser?.email]);
 
   // Add Task (Natural Language or Structured)
   const addTask = async (input) => {

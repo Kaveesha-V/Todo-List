@@ -136,3 +136,48 @@ export const sendBrowserNotification = (title, body, tag = 'aura-reminder') => {
     }
   }
 };
+
+/**
+ * Plays a pleasant, harmonic musical sound when the user cuts/dismisses a notification
+ */
+export const playNotificationDismissSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    
+    const ctx = new AudioContext();
+    const startTime = ctx.currentTime;
+
+    // Harmonic two-tone musical sweep (F5 -> A5 -> C6)
+    const notes = [
+      { freq: 698.46, time: 0.0, dur: 0.12 }, // F5
+      { freq: 880.00, time: 0.08, dur: 0.15 }, // A5
+      { freq: 1046.50, time: 0.16, dur: 0.28 } // C6
+    ];
+
+    notes.forEach(({ freq, time, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime + time);
+
+      gain.gain.setValueAtTime(0.001, startTime + time);
+      gain.gain.exponentialRampToValueAtTime(0.2, startTime + time + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + time + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(startTime + time);
+      osc.stop(startTime + time + dur);
+    });
+
+    setTimeout(() => {
+      try { ctx.close(); } catch (e) {}
+    }, 600);
+  } catch (e) {
+    console.warn("Dismiss sound notice:", e);
+  }
+};
+

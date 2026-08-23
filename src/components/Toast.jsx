@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTodo } from '../context/TodoContext';
-import { CheckCircle2, Info, AlertCircle, Sparkles } from 'lucide-react';
+import { CheckCircle2, Info, AlertCircle, Sparkles, X } from 'lucide-react';
+import { playNotificationDismissSound } from '../services/liveAlarmService';
 
 export const ToastContainer = () => {
   const { toasts, removeToast } = useTodo();
@@ -12,6 +13,7 @@ export const ToastContainer = () => {
       case 'success':
         return <CheckCircle2 size={16} style={{ color: '#10B981' }} />;
       case 'error':
+      case 'warning':
         return <AlertCircle size={16} style={{ color: '#EF4444' }} />;
       case 'ai':
         return <Sparkles size={16} style={{ color: 'var(--ai-purple)' }} />;
@@ -21,19 +23,37 @@ export const ToastContainer = () => {
     }
   };
 
+  const handleDismiss = (id) => {
+    playNotificationDismissSound();
+    removeToast(id);
+  };
+
   return (
     <div className="toast-stack" aria-live="polite">
-      {toasts.map(toast => (
+      {toasts.slice(-2).map(toast => (
         <div
           key={toast.id}
-          className="toast-item"
-          onClick={() => removeToast(toast.id)}
+          className={`toast-item toast-${toast.type || 'info'}`}
+          onClick={() => handleDismiss(toast.id)}
           role="status"
+          title="Click or press X to dismiss"
         >
           <div className="toast-icon">
             {toast.icon || getIcon(toast.type)}
           </div>
-          <span>{toast.message}</span>
+          <span className="toast-message-text">{toast.message}</span>
+          <button
+            type="button"
+            className="toast-cut-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDismiss(toast.id);
+            }}
+            title="Cut / Dismiss notification"
+            aria-label="Dismiss notification"
+          >
+            <X size={13} />
+          </button>
         </div>
       ))}
     </div>
