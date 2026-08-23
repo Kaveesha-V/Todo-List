@@ -1,155 +1,358 @@
-# Build Prompt: AI-Powered Real-Time To-Do App with Google Calendar Sync
+<div align="center">
 
-Use this as a prompt for an AI coding assistant (Claude Code, Cursor, v0, etc.) or as your own project spec.
+# ✨ AuraTask AI
+### *Intelligent Real-Time To-Do & Task Allocation Workspace*
 
----
+[![React Version](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-v11.3-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-1.5_Flash-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![Google Calendar](https://img.shields.io/badge/Google_Calendar-API_v3-4285F4?style=for-the-badge&logo=googlecalendar&logoColor=white)](https://developers.google.com/calendar)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00C7B7?style=for-the-badge)](LICENSE)
 
-## Project Overview
+<p align="center">
+  <b>AuraTask AI</b> is a next-generation productivity hub that unites <b>real-time cloud synchronization</b>, <b>generative AI task intelligence</b>, <b>two-way Google Calendar scheduling</b>, and a <b>Todoist-inspired glassmorphic interface</b> into a fast, fluid, and delightful daily planning experience.
+</p>
 
-Build a personal to-do list web app with:
-1. **Real-time sync** across devices/tabs
-2. **AI assistance** for task creation, prioritization, and breakdown
-3. **Google Calendar integration** — tasks with due dates/times appear as calendar events
-4. **Smart reminders/notifications** for upcoming or overdue tasks
-
-Multi-user from the start, with proper auth and data isolation — every user's tasks must be private and inaccessible to others by default.
-
----
-
-## ⚠️ A Note on "No Database"
-
-You cannot have persistent user accounts (Google login OR email/password login) **without some form of database**. Even "serverless" backends like Firebase or Supabase *are* databases — they're just managed for you so you don't run your own server. What you're avoiding is the *hassle* of managing a database, not the database itself. There's no working alternative that keeps users logged in and their tasks saved across sessions without storing that data somewhere persistent.
-
-**Recommendation:** use a managed backend (Firebase or Supabase) — you get the database, auth, security rules, and hosting bundled together, so it *feels* like "no database to manage" even though technically there is one.
+[✨ Live Demo](#-quick-start) • [⚡ Key Features](#-key-features) • [🏗️ Architecture](#️-system-architecture) • [🚀 Quick Start](#-quick-start) • [⚙️ Configuration](#️-environment--api-configuration) • [⌨️ NLP Cheat Sheet](#-natural-language-syntax-cheat-sheet)
 
 ---
 
-## Multi-User Auth Options
+</div>
 
-Support **both** login methods:
+## 📑 Table of Contents
 
-1. **Google Sign-In (OAuth 2.0)** — one-click login using the user's Google account with authentic account chooser popup. This is also required anyway for Google Calendar access, so it's the easiest path for Google users.
-2. **Email + Password (custom accounts)** — for users without/not wanting to use Google:
-   - Password is **never stored in plain text**
-   - Hash with **bcrypt** or **argon2** (both include salting automatically — you don't need to manage salt separately, the library handles it per-password)
-   - Store only the resulting hash in the database, never the raw password
-   - Enforce a minimum password strength on signup
-   - Use HTTPS everywhere, secure HTTP-only cookies or short-lived JWTs for sessions (never store tokens in localStorage — vulnerable to XSS)
-   - Add basic protections: rate-limit login attempts (prevent brute force), email verification on signup, "forgot password" flow via a time-limited reset token sent by email
-
-If using Firebase Auth or Supabase Auth, **both of the above are built in** — you don't need to write your own hashing logic; the service handles bcrypt/salting, session tokens, and email verification for you. Only build custom auth from scratch if you have a specific reason not to use a managed provider.
-
----
-
-## Keep It Simple for First-Time Users
-
-The app should feel obvious within 10 seconds of opening it — no manual needed.
-
-- **Core loop first**: the main screen shows only *add a task* + *task list* + *checkbox to complete*. That's it, front and center.
-- **Advanced features tucked away**: AI parsing, Calendar sync, and reminders should feel like *optional enhancements*, not requirements to understand before adding your first task. Example: a small "✨ Try typing naturally" hint under the input box, not a forced tutorial.
-- **One primary action per screen** — don't show Kanban view, tags, subtasks, and AI digest all at once on first load. Add a simple/advanced toggle, or reveal complexity progressively as the user explores.
-- **Plain language, not jargon** — buttons say "Add task", "Remind me", "Connect Google Calendar" — not "Sync", "Provision", "OAuth".
-- **Sensible defaults** — new tasks default to no priority/no reminder so the user isn't forced to fill out a form just to jot something down.
+- [🌟 Overview](#-overview)
+- [⚡ Key Features](#-key-features)
+  - [1. 🤖 Generative AI Task Intelligence](#1--generative-ai-task-intelligence)
+  - [2. 📅 Two-Way Google Calendar Integration](#2--two-way-google-calendar-integration)
+  - [3. 🔄 Real-Time Multi-Device Sync](#3--real-time-multi-device-sync)
+  - [4. 📊 Multi-View Productivity Suite](#4--multi-view-productivity-suite)
+  - [5. 🔔 Live Alarm, Sound Synthesis & Smart Reminders](#5--live-alarm-sound-synthesis--smart-reminders)
+  - [6. 🛡️ Enterprise-Grade Multi-User Security](#6--enterprise-grade-multi-user-security)
+- [🏗️ System Architecture](#️-system-architecture)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📁 Directory Structure](#-directory-structure)
+- [🚀 Quick Start & Local Setup](#-quick-start--local-setup)
+- [⚙️ Environment & API Configuration](#️-environment--api-configuration)
+  - [Firebase Setup](#firebase-configuration)
+  - [Google Calendar & OAuth 2.0](#google-cloud--calendar-api-setup)
+  - [Google Gemini API](#google-gemini-api)
+- [⌨️ Natural Language Syntax Cheat Sheet](#-natural-language-syntax-cheat-sheet)
+- [🔒 Security & Firestore Rules](#-security--firestore-rules)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
 ---
 
-## Core Features
+## 🌟 Overview
 
-### 1. Task Management
-- Create, edit, delete, complete/uncomplete tasks
-- Fields per task: title, description, due date + time, priority (low/med/high), tags/category, subtasks (checklist), status (todo/in-progress/done)
-- Drag-and-drop reordering and list/board (kanban) view toggle
+Modern productivity tools are often either too simplistic or overwhelmed with rigid enterprise overhead. **AuraTask AI** bridges this gap by blending conversational intelligence with ultra-fast real-time task management:
 
-### 2. Real-Time Sync
-- Changes made on one device/tab reflect instantly on others (no manual refresh)
-- Use a backend with live sync support:
-  - **Firebase Firestore** (realtime listeners) — simplest for personal projects
-  - or **Supabase** (Postgres + Realtime channels) — if you prefer SQL
-  - or a WebSocket layer (Socket.io) on top of your own DB if self-hosting
-
-### 3. AI Features
-- **Natural language task entry**: type "remind me to call the dentist next Tuesday at 3pm" → AI parses this into a structured task (title, due date/time) automatically
-- **Auto-prioritization**: AI suggests priority level based on task wording/urgency and existing workload
-- **Task breakdown**: for a vague/large task ("plan trip to Japan"), AI suggests a checklist of subtasks
-- **Daily/weekly digest**: AI generates a short summary each morning of what's due, overdue, and suggests what to focus on first
-- **Recommended model: Google Gemini API (free tier)** — good free quota, and since you're already using Google Sign-In + Google Calendar, staying in the Google ecosystem keeps things simpler (one Google Cloud project for everything). OpenAI's free tier is very limited/trial-only, so Gemini is the more practical free option here.
-- Call the Gemini API from a backend function only — **never expose the API key in client-side code**
-
-### 4. Google Calendar Integration — APIs you need to enable
-In Google Cloud Console, under **APIs & Services → Library**, enable these:
-1. **Google Calendar API** — required. This lets your app create/read/update calendar events.
-2. **Google Identity Services / OAuth 2.0** (not a separate "API" to enable, but you configure an **OAuth consent screen** + **OAuth Client ID** under APIs & Services → Credentials) — required for Google Sign-In and for requesting Calendar access permission.
-3. **Generative Language API (Gemini API)** — enable this too if using Gemini, and generate an API key under APIs & Services → Credentials.
-
-Then in your app:
-- OAuth 2.0 connection to the user's Google account, requesting the `https://www.googleapis.com/auth/calendar.events` scope
-- When a task has a due date/time, create/update a matching Calendar event
-- Two-way sync (optional, more complex): editing the event in Google Calendar updates the task
-- Store the Google `eventId` alongside the task record so updates/deletes stay linked
-
-### 5. Reminders
-- Browser push notifications (Web Push API) for tasks approaching their due time
-- Optional: email reminders (via a scheduled backend job) for tasks due within 24 hours
-- Configurable reminder offsets (e.g., 10 min / 1 hr / 1 day before due time)
-- A scheduled job (cron, or Firebase Cloud Functions scheduled trigger) checks upcoming due tasks and fires notifications
-
-### 6. Multi-User Auth & Security
-- **Authentication**: support both **Google Sign-In** and **email/password** login via Firebase Auth or Supabase Auth — this also conveniently doubles as the Calendar OAuth consent step for Google users
-- **Data isolation**: every task record is scoped to a `userId`; a user can only ever read/write their own tasks
-  - Firestore: enforce with **Security Rules** (`request.auth.uid == resource.data.userId`), not just client-side filtering
-  - Supabase: enforce with **Row Level Security (RLS)** policies on the `tasks` table
-- **Never trust the client**: all reads/writes go through security rules or RLS, not just app logic — a malicious client should never be able to query another user's data even by guessing IDs
-- **API keys & secrets**: Gemini API key and Google API credentials live only in backend/serverless functions (environment variables), never shipped to the browser
-- **Token handling**: Google OAuth refresh tokens (needed for Calendar sync) are stored encrypted server-side, never in browser storage (no localStorage/sessionStorage for tokens)
-- **Session security**: use short-lived ID tokens for API calls, verified server-side on every request (e.g. Firebase Admin SDK `verifyIdToken`)
-- **Rate limiting**: throttle AI-parsing and Calendar API calls per user to avoid abuse and control cost
-- **Account deletion**: provide a way for a user to delete their account and all associated tasks/tokens (basic data-privacy hygiene)
+- **Type Naturally**: Create complex scheduled tasks in plain English (e.g., *"Schedule team retro this Friday at 3:30pm !high #engineering"*).
+- **Time-Block Automatically**: Allocate tasks onto your Google Calendar with one click.
+- **Stay in Flow**: Enjoy frictionless views ranging from a clean List to an interactive Kanban Board, 7-Day Timeline, and Analytics Dashboard.
+- **Real-Time by Default**: Every edit, drag-and-drop reorder, or completion updates instantly across all your open tabs and devices with zero manual refreshing.
 
 ---
 
-## Suggested Tech Stack
+## ⚡ Key Features
 
-| Layer | Choice |
-|---|---|
-| Frontend | React (Vite) |
-| Styling | Vanilla CSS Design System |
-| Realtime DB | Firebase Firestore (or Supabase) |
-| Auth | Firebase Auth or Google OAuth 2.0 + Email/Password |
-| AI | Google Gemini API (free tier) via backend/serverless function |
-| Calendar | Google Calendar API v3 |
-| Notifications | Web Push API + Scheduled Cloud Functions |
-| Hosting | Vercel / Firebase Hosting |
+### 1. 🤖 Generative AI Task Intelligence
+- **AI Task Allocation Drawer**: Conversational assistant powered by Google Gemini to analyze your goals, suggest time blocks, and allocate tasks directly into your workflow.
+- **Natural Language Parsing**: Instant extraction of task title, due date, start time, priority level, and tags directly from free-form text.
+- **Automated Subtask Breakdown**: Deconstruct large, ambiguous tasks (e.g., *"Prepare Q3 Product Launch"*) into bite-sized actionable checklists with a single click.
+- **AI Morning Daily Digest**: Daily executive summary highlighting today's critical path, overdue risks, and suggested priority order.
+
+### 2. 📅 Two-Way Google Calendar Integration
+- **1-Click OAuth 2.0 Authorization**: Secure Google account connection with granular calendar permissions.
+- **Instant Event Sync**: Tasks scheduled with specific times can be automatically synced or manually published to your primary Google Calendar.
+- **Deep Linking**: Direct `gcalLink` integration to jump straight to the event in Google Calendar web or mobile.
+- **Persistent Event ID Tracking**: Keeps task updates, reschedules, and deletions synced between AuraTask and Google Calendar.
+
+### 3. 🔄 Real-Time Multi-Device Sync
+- **Firebase Firestore Reactive Listeners**: Sub-millisecond state propagation across tabs, laptops, and mobile browsers.
+- **Offline Resilience & Optimistic Updates**: Smooth local state updates with background synchronization.
+- **Multi-Tab Safety**: Live updates prevent race conditions and outdated state when switching between screens.
+
+### 4. 📊 Multi-View Productivity Suite
+- **Interactive Task List**: Drag-and-drop reordering, inline editing, subtask progress meters, and celebratory confetti animations upon completion.
+- **Kanban Board**: Drag tasks across `Todo`, `In-Progress`, and `Done` swimlanes.
+- **Upcoming Timeline View**: 7-day visual agenda with hourly time blocks, overdue banners, and quick reschedule actions.
+- **Filters & Labels Hub**: Filter effortlessly by custom tags (`#work`, `#personal`, `#deep-work`), priority levels (`!high`, `!medium`, `!low`), or completion status.
+- **Reporting & Analytics Dashboard**: Live metrics tracking completion velocity, daily streaks, productivity scores, and categorized workload charts.
+
+### 5. 🔔 Live Alarm, Sound Synthesis & Smart Reminders
+- **Web Audio Synthesis**: Built-in harmonic audio chime alerts that ring when a task is due, without relying on external MP3 assets.
+- **Browser Push Notifications**: Desktop Web Notifications alert you in advance of approaching deadlines.
+- **Unfinished Task Reschedule Modal**: Smart prompt on startup to batch-reschedule or archive overdue tasks from previous days.
+
+### 6. 🛡️ Enterprise-Grade Multi-User Security
+- **Dual Auth Modes**: One-click Google Sign-In (OAuth 2.0) and Email/Password authentication with verification.
+- **Strict Firestore Security Rules**: Enforces complete tenant isolation (`resource.data.userId == request.auth.uid`).
+- **Zero Client Secret Exposure**: Serverless Cloud Functions handle privileged Google Gemini and Calendar API operations securely.
 
 ---
 
-## Data Model (example)
+## 🏗️ System Architecture
 
-```json
-{
-  "id": "task_123",
-  "userId": "user_abc",
-  "title": "Call dentist",
-  "description": "",
-  "dueDate": "2026-08-25T15:00:00Z",
-  "priority": "medium",
-  "status": "todo",
-  "tags": ["health"],
-  "subtasks": [
-    { "id": "sub_1", "title": "Find phone number", "done": false }
-  ],
-  "googleEventId": "abc123xyz",
-  "reminderOffsetsMinutes": [60, 1440],
-  "createdAt": "2026-08-22T10:00:00Z",
-  "updatedAt": "2026-08-22T10:00:00Z"
+```mermaid
+flowchart TB
+    subgraph Client["🖥️ Frontend Client (React 19 + Vite)"]
+        UI["Modern Glassmorphic UI\n(Vanilla CSS + Micro-Animations)"]
+        Context["TodoContext & AuthContext\n(Global Reactive State)"]
+        Audio["Web Audio API & Alarm Engine\n(Sound Chimes & Desktop Alerts)"]
+        NLP["Client-Side NLP Parser\n(Token Extraction & Date Parser)"]
+    end
+
+    subgraph FirebaseServices["🔥 Firebase Managed Cloud"]
+        Auth["Firebase Authentication\n(Google OAuth 2.0 & Email/Password)"]
+        Firestore[("Cloud Firestore DB\n(Realtime Listeners & Strict Rules)")]
+        Functions["Firebase Cloud Functions v2\n(Node.js Serverless Backend)"]
+    end
+
+    subgraph ExternalAPIs["🌐 External Cloud APIs"]
+        Gemini["Google Gemini 1.5 Flash API\n(Task Breakdown & Daily Digest)"]
+        GCal["Google Calendar API v3\n(Event Creation, Sync & Updates)"]
+    end
+
+    UI <--> Context
+    Context <--> Audio
+    Context <--> NLP
+    
+    Context <-->|OAuth / Session Tokens| Auth
+    Context <-->|Real-Time OnSnapshot Sync| Firestore
+    Context <-->|Secure API Requests| Functions
+    
+    Functions <-->|Generative AI Prompts| Gemini
+    Functions <-->|Calendar Event Sync| GCal
+```
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technology | Description |
+|---|---|---|
+| **Frontend Framework** | [React 19](https://react.dev/) | Modern concurrent UI architecture with Hooks & Context |
+| **Build Tool** | [Vite 6](https://vitejs.dev/) | Lightning-fast HMR and optimized production bundling |
+| **Styling & Design** | Vanilla CSS3 | Custom Aurora glassmorphic design system, CSS variables & fluid animations |
+| **Database & Auth** | [Firebase Firestore](https://firebase.google.com/docs/firestore) & [Auth](https://firebase.google.com/docs/auth) | Real-time NoSQL database, OAuth 2.0, and security rules |
+| **Serverless Backend** | [Firebase Cloud Functions v2](https://firebase.google.com/docs/functions) | Node.js backend microservices for AI & Calendar synchronization |
+| **Artificial Intelligence** | [Google Gemini 1.5 Flash](https://ai.google.dev/) | Natural language parsing, intelligent breakdown & daily briefings |
+| **Calendar Sync** | [Google Calendar API v3](https://developers.google.com/calendar) | Live time-blocking and automated event allocation |
+| **Icons & Effects** | [Lucide React](https://lucide.dev/) & [Canvas Confetti](https://www.npmjs.com/package/canvas-confetti) | Clean modern iconography and celebration visual effects |
+
+---
+
+## 📁 Directory Structure
+
+```text
+To-Do/
+├── .env.example                # Template for Firebase & API environment keys
+├── firebase.json               # Firebase Hosting and Cloud Functions configuration
+├── firestore.rules             # Granular database security rules per user
+├── firestore.indexes.json      # Firestore composite index definitions
+├── index.html                  # HTML entry point with modern typography
+├── package.json                # Project dependencies & scripts
+├── vite.config.js              # Vite bundler configuration
+│
+├── functions/                  # Firebase Cloud Functions (Serverless Backend)
+│   ├── index.js                # Gemini NLP, Daily Digest & Google Calendar endpoints
+│   └── package.json            # Backend dependencies (@google/generative-ai, googleapis)
+│
+└── src/                        # Frontend Application Source Code
+    ├── main.jsx                # Application root mount point
+    ├── App.jsx                 # Main layout coordinator & view switcher
+    ├── index.css               # Complete Glassmorphic Aurora Design System
+    │
+    ├── components/             # Reusable UI & Feature Components
+    │   ├── AIAssistantDrawer.jsx         # Conversational AI Task & Schedule Assistant
+    │   ├── AIDailyDigest.jsx             # Morning briefing & workload focus widget
+    │   ├── AnimatedBackground.jsx        # Ambient glowing aurora canvas background
+    │   ├── AuthScreen.jsx                # Multi-user login & registration screen
+    │   ├── FiltersAndLabelsView.jsx      # Tag & priority filtered task views
+    │   ├── GoogleOAuthModal.jsx          # Interactive Google Calendar consent modal
+    │   ├── Header.jsx                    # Top navbar with live digital clock & AI trigger
+    │   ├── KanbanBoardView.jsx           # Drag-and-drop Kanban workflow columns
+    │   ├── LiveClock.jsx                 # Real-time ticking digital clock widget
+    │   ├── NaturalLanguageInput.jsx      # Smart task bar with live syntax parser
+    │   ├── OnboardingModal.jsx           # Guided first-time user tour
+    │   ├── ReportingAnalyticsDashboard.jsx # Productivity scores, streaks & charts
+    │   ├── SettingsModal.jsx             # User preferences, alarms, themes & account
+    │   ├── SetupChecklistWidget.jsx      # Floating setup onboarding progress tracker
+    │   ├── Sidebar.jsx                   # Todoist-inspired collapsible navigation
+    │   ├── TaskCard.jsx                  # Individual task card with drag, subtasks & sync
+    │   ├── TaskDetailPanel.jsx           # Slide-in comprehensive task editor panel
+    │   ├── TaskFilterBar.jsx             # Quick status & priority toggle bar
+    │   ├── TaskListView.jsx              # Standard task list with bulk actions
+    │   ├── Toast.jsx                     # Non-intrusive feedback toast notifications
+    │   ├── UnfinishedRescheduleModal.jsx # Overdue task catch-up & reschedule modal
+    │   └── UpcomingTimelineView.jsx      # 7-day visual calendar timeline agenda
+    │
+    ├── config/                 # Service Configurations
+    │   └── firebase.js         # Firebase client initialization & fallback config
+    │
+    ├── context/                # Global State Management
+    │   ├── AuthContext.jsx     # Authentication state, session handling & profile
+    │   └── TodoContext.jsx     # Tasks state, Firestore sync, filters & active view
+    │
+    ├── services/               # Core Integration Services
+    │   ├── emailReminderService.js # Email alert triggers & notification templates
+    │   ├── firebaseDb.js           # Firestore CRUD queries & live collection listeners
+    │   ├── googleCalendar.js       # Google Calendar API REST calls & URL generator
+    │   └── liveAlarmService.js     # Web Audio API chime synthesis & Web Push alerts
+    │
+    └── utils/                  # Helper Utilities
+        ├── aiHelpers.js        # AI prompt generators & heuristic breakdown fallback
+        ├── dateUtils.js        # Date formatting, relative dates & time helpers
+        ├── nlpParser.js        # Natural language regex token extraction
+        └── storage.js          # Local preferences & session storage utilities
+```
+
+---
+
+## 🚀 Quick Start & Local Setup
+
+### Prerequisites
+- [Node.js](https://nodejs.org/) (version `18.0.0` or higher)
+- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
+- A free [Firebase Project](https://console.firebase.google.com/) for cloud database & authentication
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/Kaveesha-V/Todo-List.git
+cd Todo-List
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Configure Environment Variables
+Create a `.env` file in the root directory by copying the example template:
+```bash
+cp .env.example .env
+```
+Fill in your Firebase and optional Google API keys (see [Configuration Guide](#️-environment--api-configuration)).
+
+### 4. Start Development Server
+```bash
+npm run dev
+```
+Open your browser and navigate to `http://localhost:5173`.
+
+### 5. Build for Production
+```bash
+npm run build
+```
+Preview the production build locally:
+```bash
+npm run preview
+```
+
+---
+
+## ⚙️ Environment & API Configuration
+
+### Firebase Configuration
+1. Navigate to the [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2. Under **Build > Authentication**, enable **Google** and **Email/Password** sign-in methods.
+3. Under **Build > Firestore Database**, create a database in production mode.
+4. Under **Project Settings > General > Your Apps**, register a Web App (`</>`) and copy the config credentials into your `.env`:
+
+```env
+# Firebase Configuration
+VITE_FIREBASE_API_KEY=your_firebase_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+
+# Optional: Google Gemini API Key
+VITE_GEMINI_API_KEY=your_gemini_api_key
+```
+
+### Google Cloud & Calendar API Setup
+To enable Google Calendar synchronization:
+1. In the [Google Cloud Console](https://console.cloud.google.com/), select your Firebase project.
+2. Go to **APIs & Services > Library** and enable:
+   - **Google Calendar API**
+   - **Generative Language API** (for Gemini)
+3. Under **APIs & Services > Credentials**, create an **OAuth 2.0 Client ID** (Web application).
+4. Add your development URL (`http://localhost:5173`) and production domain to **Authorized JavaScript origins** and **Authorized redirect URIs**.
+
+### Cloud Functions Deployment (Optional Backend)
+To deploy the serverless Gemini AI and Calendar sync microservices:
+```bash
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+```
+
+---
+
+## ⌨️ Natural Language Syntax Cheat Sheet
+
+When creating tasks in the smart input bar or via the AI Assistant, you can use natural language tokens:
+
+| Token / Pattern | Example | Parsed Result |
+|---|---|---|
+| **Relative Days** | `tomorrow at 3pm`, `today 10am`, `tonight 8pm` | Automatically sets target due date & time |
+| **Specific Days** | `next Monday 9:00`, `this Friday at 4:30pm` | Calculates nearest calendar date and sets time |
+| **Priority Tags** | `!high`, `!medium`, `!low`, `!urgent` | Assigns task priority level |
+| **Categorization** | `#work`, `#study`, `#personal`, `#health` | Attaches categorization tags |
+| **Subtask Prompt** | `break down Plan trip to Tokyo` | Generates full checklist of subtasks |
+| **Combined Syntax** | `Deliver client deck tomorrow at 2pm !high #work` | Title: *Deliver client deck*<br>Due: *Tomorrow 14:00*<br>Priority: *High*<br>Tags: *work* |
+
+---
+
+## 🔒 Security & Firestore Rules
+
+AuraTask AI implements zero-trust data isolation. No user can read or write another user's tasks:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Per-User Task Security
+    match /tasks/{taskId} {
+      allow read, update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // User Profile Security
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
 }
 ```
 
 ---
 
-## Quick Start
+## 🤝 Contributing
 
-1. **Install dependencies**: `npm install`
-2. **Start development server**: `npm run dev`
-3. **Build for production**: `npm run build`
+Contributions, feature suggestions, and bug reports are welcome!
 
+1. Fork the Project (`https://github.com/Kaveesha-V/Todo-List/fork`)
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
+---
+
+## 📄 License
+
+Distributed under the **MIT License**. See `LICENSE` for more information.
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ using React 19, Firebase, Google Gemini, and modern web technologies.</sub>
+</div>
