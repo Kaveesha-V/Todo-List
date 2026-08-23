@@ -422,7 +422,13 @@ export const createTaskInCloud = async (task, userEmail = null) => {
     await setDoc(taskRef, taskData, { merge: true });
     return taskData;
   } catch (err) {
-    console.error("Failed to create task in Firestore:", err);
+    if (err.code === 'permission-denied') {
+      console.error(
+        "🔥 Firestore Permission Denied: Please update your Firestore Security Rules in Firebase Console to 'allow read, write: if true;' to enable cross-device sync."
+      );
+    } else {
+      console.error("Failed to create task in Firestore:", err);
+    }
     throw err;
   }
 };
@@ -446,7 +452,13 @@ export const updateTaskInCloud = async (taskId, updates) => {
     );
     return true;
   } catch (err) {
-    console.error("Failed to update task in Firestore:", err);
+    if (err.code === 'permission-denied') {
+      console.error(
+        "🔥 Firestore Permission Denied: Update Firestore Security Rules in Firebase Console to 'allow read, write: if true;'."
+      );
+    } else {
+      console.error("Failed to update task in Firestore:", err);
+    }
     throw err;
   }
 };
@@ -463,7 +475,11 @@ export const deleteTaskInCloud = async (taskId) => {
     await deleteDoc(taskRef);
     return true;
   } catch (err) {
-    console.error("Failed to delete task from Firestore:", err);
+    if (err.code === 'permission-denied') {
+      console.error("🔥 Firestore Permission Denied: Update Firestore Rules to 'allow read, write: if true;'.");
+    } else {
+      console.error("Failed to delete task from Firestore:", err);
+    }
     throw err;
   }
 };
