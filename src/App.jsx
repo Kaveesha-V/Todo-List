@@ -6,10 +6,12 @@ import { Sidebar } from './components/Sidebar';
 import { ReportingAnalyticsDashboard } from './components/ReportingAnalyticsDashboard';
 import { NaturalLanguageInput } from './components/NaturalLanguageInput';
 import { TaskFilterBar } from './components/TaskFilterBar';
+import { AIDailyDigest } from './components/AIDailyDigest';
 import { TaskListView } from './components/TaskListView';
 import { KanbanBoardView } from './components/KanbanBoardView';
 import { UpcomingTimelineView } from './components/UpcomingTimelineView';
 import { FiltersAndLabelsView } from './components/FiltersAndLabelsView';
+import { AdminPortalView } from './components/AdminPortalView';
 import { TaskDetailPanel } from './components/TaskDetailPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { AuthScreen } from './components/AuthScreen';
@@ -18,10 +20,10 @@ import { SetupChecklistWidget } from './components/SetupChecklistWidget';
 import { AIAssistantDrawer } from './components/AIAssistantDrawer';
 import { AnimatedBackground } from './components/AnimatedBackground';
 import { ToastContainer } from './components/Toast';
-import { Sparkles, SlidersHorizontal, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, SlidersHorizontal, ChevronDown, ChevronUp, Megaphone } from 'lucide-react';
 
 const DashboardContent = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin, systemBroadcast } = useAuth();
   const {
     viewMode,
     activeNavTab,
@@ -68,9 +70,21 @@ const DashboardContent = () => {
           onToggleAISidebar={() => setIsAIAssistantOpen(!isAIAssistantOpen)}
         />
 
+        {/* Global System Broadcast Banner (Admin Published) */}
+        {systemBroadcast && systemBroadcast.message && (
+          <div className={`global-system-broadcast-banner ${systemBroadcast.level || 'info'} animate-fade-in`}>
+            <div className="broadcast-banner-inner">
+              <Megaphone size={16} className="broadcast-pulse-icon" />
+              <span className="broadcast-banner-text">{systemBroadcast.message}</span>
+            </div>
+          </div>
+        )}
+
         {/* Dynamic Views based on Sidebar Selection */}
         <main className="main-content">
-          {activeNavTab === 'upcoming' ? (
+          {activeNavTab === 'admin' ? (
+            <AdminPortalView />
+          ) : activeNavTab === 'upcoming' ? (
             <UpcomingTimelineView />
           ) : activeNavTab === 'filters' ? (
             <FiltersAndLabelsView />

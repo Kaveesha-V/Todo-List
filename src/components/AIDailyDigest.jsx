@@ -17,9 +17,19 @@ export const AIDailyDigest = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const digest = aiDigest || {
+    generatedAt: 'Just now',
+    summary: 'Add tasks to see AI priorities, suggestions, and daily workload analysis.',
+    todayCount: 0,
+    overdueCount: 0,
+    highPriorityCount: 0,
+    completedCount: 0,
+    recommendedFocus: null
+  };
+
   const handleFocusClick = () => {
-    if (aiDigest.focusTaskId) {
-      const task = tasks.find(t => t.id === aiDigest.focusTaskId);
+    if (digest.focusTaskId) {
+      const task = tasks?.find(t => t.id === digest.focusTaskId);
       if (task) {
         setActiveTask(task);
         addToast(`Focus mode: ${task.title}`, 'info');
@@ -48,14 +58,14 @@ export const AIDailyDigest = () => {
             <h2 className="ai-digest-title">
               AI Daily Digest
               <span className="ai-digest-timestamp">
-                • {aiDigest.generatedAt}
+                • {digest.generatedAt}
               </span>
             </h2>
           </div>
         </div>
 
         <div className="ai-digest-actions">
-          {aiDigest.recommendedFocus && (
+          {digest.recommendedFocus && (
             <button
               className="digest-chip-btn"
               onClick={handleFocusClick}
@@ -92,18 +102,18 @@ export const AIDailyDigest = () => {
       {!isCollapsed && (
         <>
           <p className="ai-digest-body">
-            {aiDigest.summary}
+            {digest.summary}
           </p>
 
           {/* Quick Metrics Breakdown */}
           <div className="ai-digest-highlights">
-            {aiDigest.overdueCount > 0 && (
+            {digest.overdueCount > 0 && (
               <div className="digest-stat-item" style={{ borderColor: 'var(--priority-high-border)' }}>
                 <div className="digest-stat-icon" style={{ background: 'var(--priority-high-bg)', color: 'var(--priority-high)' }}>
                   <AlertTriangle size={14} />
                 </div>
                 <div>
-                  <div className="digest-stat-text">{aiDigest.overdueCount} Overdue</div>
+                  <div className="digest-stat-text">{digest.overdueCount} Overdue</div>
                   <div className="digest-stat-sub">Needs immediate action</div>
                 </div>
               </div>
@@ -114,18 +124,18 @@ export const AIDailyDigest = () => {
                 <Clock size={14} />
               </div>
               <div>
-                <div className="digest-stat-text">{aiDigest.todayCount} Due Today</div>
+                <div className="digest-stat-text">{digest.todayCount} Due Today</div>
                 <div className="digest-stat-sub">On track schedule</div>
               </div>
             </div>
 
-            {aiDigest.highPriorityCount > 0 && (
+            {digest.highPriorityCount > 0 && (
               <div className="digest-stat-item">
                 <div className="digest-stat-icon" style={{ background: 'var(--priority-high-bg)', color: 'var(--priority-high)' }}>
                   <Flame size={14} />
                 </div>
                 <div>
-                  <div className="digest-stat-text">{aiDigest.highPriorityCount} High Priority</div>
+                  <div className="digest-stat-text">{digest.highPriorityCount} High Priority</div>
                   <div className="digest-stat-sub">Critical impact items</div>
                 </div>
               </div>
@@ -136,8 +146,8 @@ export const AIDailyDigest = () => {
                 <CheckCircle size={14} />
               </div>
               <div>
-                <div className="digest-stat-text">{aiDigest.completedCount} Completed</div>
-                <div className="digest-stat-sub">Great momentum</div>
+                <div className="digest-stat-text">{digest.completedCount} Completed</div>
+                <div className="digest-stat-sub">Great progress</div>
               </div>
             </div>
           </div>

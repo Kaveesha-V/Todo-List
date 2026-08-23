@@ -24,11 +24,12 @@ import {
   LogOut,
   FolderPlus,
   Trash2,
+  Shield,
   X
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, isAdmin } = useAuth();
   const {
     activeNavTab,
     setActiveNavTab,
@@ -268,6 +269,19 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
           <LayoutGrid size={18} className="nav-icon kanban" />
           <span className="nav-label">Kanban Board</span>
         </button>
+
+        {/* Admin Portal Tab (Superuser Only) */}
+        {isAdmin && (
+          <button
+            type="button"
+            className={`sidebar-nav-item admin-nav-tab ${activeNavTab === 'admin' ? 'active' : ''}`}
+            onClick={() => handleNavClick('admin')}
+          >
+            <Shield size={18} className="nav-icon admin" />
+            <span className="nav-label">Admin Portal</span>
+            <span className="nav-badge admin-badge">ADMIN</span>
+          </button>
+        )}
       </nav>
 
       {/* My Projects Section */}

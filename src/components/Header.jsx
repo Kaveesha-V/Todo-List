@@ -12,11 +12,12 @@ import {
   Calendar,
   LogIn,
   ChevronDown,
-  Menu
+  Menu,
+  Shield
 } from 'lucide-react';
 
 export const Header = ({ onToggleSidebar, onToggleAISidebar }) => {
-  const { currentUser, connectGoogleCalendar } = useAuth();
+  const { currentUser, connectGoogleCalendar, isAdmin } = useAuth();
   const { theme, toggleTheme, setIsSettingsOpen } = useTodo();
 
   return (
@@ -38,10 +39,16 @@ export const Header = ({ onToggleSidebar, onToggleAISidebar }) => {
           <div className="brand-logo">
             <CheckCircle2 size={22} strokeWidth={2.5} />
           </div>
-          <div>
+          <div className="brand-title-wrap">
             <h1 className="brand-title">
               Aura
             </h1>
+            {isAdmin && (
+              <span className="header-admin-badge" title="Authenticated as System Administrator">
+                <Shield size={10} />
+                <span>ADMIN</span>
+              </span>
+            )}
           </div>
         </div>
 
