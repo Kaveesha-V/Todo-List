@@ -79,24 +79,48 @@ export const TaskDetailPanel = () => {
         <div className="panel-header">
           {/* Status selector */}
           <div className="panel-status-pills">
-            <button
-              className={`status-pill-opt ${activeTask.status === 'todo' ? 'active' : ''}`}
-              onClick={() => updateTask(activeTask.id, { status: 'todo' })}
-            >
-              To Do
-            </button>
-            <button
-              className={`status-pill-opt ${activeTask.status === 'inprogress' ? 'active' : ''}`}
-              onClick={() => updateTask(activeTask.id, { status: 'inprogress' })}
-            >
-              In Progress
-            </button>
-            <button
-              className={`status-pill-opt ${activeTask.status === 'done' ? 'active' : ''}`}
-              onClick={() => updateTask(activeTask.id, { status: 'done' })}
-            >
-              Done
-            </button>
+            {activeTask.status === 'done' ? (
+              <div
+                className="status-pill-opt active"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'var(--status-done)',
+                  color: '#fff',
+                  cursor: 'default',
+                  padding: '6px 14px'
+                }}
+                title="Finished tasks are permanently recorded and cannot be undone."
+              >
+                <Check size={13} strokeWidth={3} />
+                <span>Finished (Permanently Recorded)</span>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={`status-pill-opt ${activeTask.status === 'todo' ? 'active' : ''}`}
+                  onClick={() => updateTask(activeTask.id, { status: 'todo' })}
+                >
+                  To Do
+                </button>
+                <button
+                  type="button"
+                  className={`status-pill-opt ${activeTask.status === 'inprogress' ? 'active' : ''}`}
+                  onClick={() => updateTask(activeTask.id, { status: 'inprogress' })}
+                >
+                  In Progress
+                </button>
+                <button
+                  type="button"
+                  className={`status-pill-opt ${activeTask.status === 'done' ? 'active' : ''}`}
+                  onClick={() => updateTask(activeTask.id, { status: 'done' })}
+                >
+                  Done
+                </button>
+              </>
+            )}
           </div>
 
           <button

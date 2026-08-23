@@ -7,7 +7,9 @@ import {
   ArrowRight,
   ArrowLeft,
   AlertCircle,
-  Tag
+  Tag,
+  Lock,
+  Check
 } from 'lucide-react';
 
 export const KanbanBoardView = () => {
@@ -109,27 +111,47 @@ export const KanbanBoardView = () => {
                           )}
                         </div>
 
-                        {/* Column shift controls */}
+                        {/* Column shift controls (Done tasks are locked and cannot be moved back) */}
                         <div className="kanban-move-btn-group" onClick={(e) => e.stopPropagation()}>
-                          {col.id !== 'todo' && (
-                            <button
-                              className="kanban-move-btn"
-                              onClick={() => setTaskStatus(task.id, col.id === 'done' ? 'inprogress' : 'todo')}
-                              title="Move left"
-                              aria-label="Move left"
+                          {col.id === 'done' ? (
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                color: '#10B981',
+                                background: 'rgba(16, 185, 129, 0.15)',
+                                padding: '2px 7px',
+                                borderRadius: '99px'
+                              }}
+                              title="Finished tasks are permanently recorded and cannot be moved back."
                             >
-                              <ArrowLeft size={11} />
-                            </button>
-                          )}
-                          {col.id !== 'done' && (
-                            <button
-                              className="kanban-move-btn"
-                              onClick={() => setTaskStatus(task.id, col.id === 'todo' ? 'inprogress' : 'done')}
-                              title="Move right"
-                              aria-label="Move right"
-                            >
-                              <ArrowRight size={11} />
-                            </button>
+                              <Lock size={10} />
+                              <span>Locked</span>
+                            </span>
+                          ) : (
+                            <>
+                              {col.id === 'inprogress' && (
+                                <button
+                                  className="kanban-move-btn"
+                                  onClick={() => setTaskStatus(task.id, 'todo')}
+                                  title="Move to To Do"
+                                  aria-label="Move left to To Do"
+                                >
+                                  <ArrowLeft size={11} />
+                                </button>
+                              )}
+                              <button
+                                className="kanban-move-btn"
+                                onClick={() => setTaskStatus(task.id, col.id === 'todo' ? 'inprogress' : 'done')}
+                                title={col.id === 'todo' ? "Move to In Progress" : "Complete Task"}
+                                aria-label="Move right"
+                              >
+                                <ArrowRight size={11} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>

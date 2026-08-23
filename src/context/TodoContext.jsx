@@ -553,6 +553,12 @@ export const TodoProvider = ({ children }) => {
   const updateTask = (taskId, updates) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
+        // Finished tasks cannot be reverted to active/inprogress
+        if (t.status === 'done' && updates.status && updates.status !== 'done') {
+          addToast("Finished tasks are permanently recorded and cannot be undone.", "info");
+          const { status, ...allowedUpdates } = updates;
+          updates = allowedUpdates;
+        }
         const updated = {
           ...t,
           ...updates,
@@ -568,6 +574,14 @@ export const TodoProvider = ({ children }) => {
       }
       return t;
     }));
+
+    // Keep activeTask in sync immediately
+    setActiveTask(prev => {
+      if (prev && prev.id === taskId) {
+        return { ...prev, ...updates, updatedAt: new Date().toISOString() };
+      }
+      return prev;
+    });
   };
 
   // Delete Task
@@ -619,15 +633,23 @@ export const TodoProvider = ({ children }) => {
     }));
   };
 
-  // Set Status explicitly
+  // Set Status explicitly (Guards finished tasks from being moved back)
   const setTaskStatus = (taskId, newStatus) => {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
+        // If task is already done, reject changing status back to inprogress/todo
+        if (t.status === 'done' && newStatus !== 'done') {
+          addToast("Finished tasks are permanently recorded and cannot be moved back.", "info");
+          return t;
+        }
+
         if (newStatus === 'done' && t.status !== 'done') {
           try {
             confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
           } catch {}
+          addToast(`Completed: ${t.title}`, 'success');
         }
+
         const updated = { ...t, status: newStatus, updatedAt: new Date().toISOString() };
         if (isCloudDatabaseReady()) {
           updateTaskInCloud(taskId, updated).catch(err => console.warn("Cloud set status failed:", err));
@@ -636,6 +658,13 @@ export const TodoProvider = ({ children }) => {
       }
       return t;
     }));
+
+    setActiveTask(prev => {
+      if (prev && prev.id === taskId) {
+        return { ...prev, status: newStatus, updatedAt: new Date().toISOString() };
+      }
+      return prev;
+    });
   };
 
   // Subtask Management
