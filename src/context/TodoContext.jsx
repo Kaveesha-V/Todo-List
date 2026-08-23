@@ -34,6 +34,32 @@ import { generateDailyDigest, generateSubtasksForTask } from '../utils/aiHelpers
 
 const TodoContext = createContext(null);
 
+// Deep comparison to prevent unnecessary React re-renders, layout shifting, and scroll collapse
+const areTasksEqual = (a, b) => {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    const taskA = a[i];
+    const taskB = b.find(t => t.id === taskA.id);
+    if (!taskB) return false;
+    if (
+      taskA.title !== taskB.title ||
+      taskA.status !== taskB.status ||
+      taskA.dueDate !== taskB.dueDate ||
+      taskA.dueTime !== taskB.dueTime ||
+      taskA.priority !== taskB.priority ||
+      taskA.description !== taskB.description ||
+      taskA.updatedAt !== taskB.updatedAt ||
+      (taskA.subtasks?.length || 0) !== (taskB.subtasks?.length || 0)
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
 export const TodoProvider = ({ children }) => {
   const { currentUser, updateCalendarConnection, updateReminderOffsets } = useAuth();
 
@@ -47,7 +73,6 @@ export const TodoProvider = ({ children }) => {
   const [activeTask, setActiveTask] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
-    // Show onboarding for first-time user who has not completed it
     if (typeof window !== 'undefined' && currentUser?.uid) {
       const done = localStorage.getItem(`aura_onboarded_${currentUser.uid}`);
       return !done;
@@ -70,6 +95,20 @@ export const TodoProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
   const [focusModeTaskId, setFocusModeTaskId] = useState(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+
+  // Update state ONLY if tasks actually changed — eliminates layout collapse and scroll jumping
+  const updateTasksIfChanged = (incomingTasks) => {
+    if (!Array.isArray(incomingTasks)) return;
+    setTasks(prev => {
+      if (areTasksEqual(prev, incomingTasks)) {
+        return prev;
+      }
+      if (currentUser?.uid) {
+        saveUserTasks(currentUser.uid, incomingTasks, currentUser.email);
+      }
+      return incomingTasks;
+    });
+  };
 
   // Toast Helper (defined before other functions to prevent TDZ ReferenceError)
   const addToast = (input, type = 'info', icon = null) => {
@@ -117,28 +156,26 @@ export const TodoProvider = ({ children }) => {
     addToast("Project removed", "info");
   };
 
-  // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
+  // Initial Task Load on User Change + Firestore real-time listener
   useEffect(() => {
     if (currentUser?.uid || currentUser?.email) {
       const userTasks = loadUserTasks(currentUser?.uid, currentUser?.email);
-      setTasks(userTasks);
+      updateTasksIfChanged(userTasks);
 
-      // If Firebase Cloud Database is configured, fetch immediately & attach real-time Firestore listener
       if (isCloudDatabaseReady()) {
         setIsCloudSyncing(true);
 
-        // If local tasks exist (e.g. from current device), sync them to cloud so other devices get them
+        // If local tasks exist, sync them to cloud in background
         if (userTasks && userTasks.length > 0) {
           syncLocalTasksToCloud(currentUser.uid, currentUser.email, userTasks)
             .catch(e => console.warn("Local to cloud sync notice:", e));
         }
 
-        // Immediate fetch from Cloud Database (for logging in from another device)
+        // Initial fetch from Cloud Database
         getUserTasksFromCloud(currentUser.uid, currentUser.email)
           .then((cloudTasks) => {
             if (cloudTasks && cloudTasks.length > 0) {
-              setTasks(cloudTasks);
-              saveUserTasks(currentUser.uid, cloudTasks, currentUser.email);
+              updateTasksIfChanged(cloudTasks);
             }
             setIsCloudSyncing(false);
           })
@@ -153,8 +190,7 @@ export const TodoProvider = ({ children }) => {
           currentUser.email,
           (cloudTasks) => {
             if (cloudTasks && cloudTasks.length > 0) {
-              setTasks(cloudTasks);
-              saveUserTasks(currentUser.uid, cloudTasks, currentUser.email);
+              updateTasksIfChanged(cloudTasks);
             }
             setIsCloudSyncing(false);
           },
@@ -170,6 +206,23 @@ export const TodoProvider = ({ children }) => {
     }
   }, [currentUser?.uid, currentUser?.email]);
 
+  // 3-Second Smooth Background Sync Interval (as requested by user)
+  useEffect(() => {
+    if (!currentUser?.uid || !isCloudDatabaseReady()) return;
+
+    const intervalId = setInterval(() => {
+      getUserTasksFromCloud(currentUser.uid, currentUser.email)
+        .then((cloudTasks) => {
+          if (cloudTasks && cloudTasks.length > 0) {
+            updateTasksIfChanged(cloudTasks);
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [currentUser?.uid, currentUser?.email]);
+
   // Apply theme to DOM document
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -178,7 +231,7 @@ export const TodoProvider = ({ children }) => {
 
   // Persist tasks strictly scoped to current user & broadcast live across tabs
   useEffect(() => {
-    if (currentUser?.uid) {
+    if (currentUser?.uid && tasks.length > 0) {
       saveUserTasks(currentUser.uid, tasks, currentUser.email);
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         try {
@@ -207,7 +260,7 @@ export const TodoProvider = ({ children }) => {
             event.data?.userId === currentUser?.uid &&
             Array.isArray(event.data?.tasks)
           ) {
-            setTasks(event.data.tasks);
+            updateTasksIfChanged(event.data.tasks);
           }
         };
       } catch (e) {
@@ -218,7 +271,8 @@ export const TodoProvider = ({ children }) => {
     const handleStorageChange = (e) => {
       if (currentUser && e.key === `aura_tasks_${currentUser.uid}` && e.newValue) {
         try {
-          setTasks(JSON.parse(e.newValue));
+          const parsed = JSON.parse(e.newValue);
+          updateTasksIfChanged(parsed);
         } catch (err) {
           console.error("Multi-tab sync error:", err);
         }

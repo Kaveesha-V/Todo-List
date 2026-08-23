@@ -15,7 +15,7 @@ import {
   Lock
 } from 'lucide-react';
 
-export const TaskCard = ({ task }) => {
+export const TaskCard = React.memo(({ task }) => {
   const {
     toggleTaskComplete,
     setActiveTask,
@@ -189,4 +189,4 @@ export const TaskCard = ({ task }) => {
       />
     </>
   );
-};
+});
