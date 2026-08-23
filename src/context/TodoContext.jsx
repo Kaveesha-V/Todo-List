@@ -10,6 +10,7 @@ import {
 import {
   isCloudDatabaseReady,
   subscribeToUserTasks,
+  getUserTasksFromCloud,
   createTaskInCloud,
   updateTaskInCloud,
   deleteTaskInCloud,
@@ -118,15 +119,32 @@ export const TodoProvider = ({ children }) => {
 
   // Reload tasks whenever currentUser changes + attach Cloud Database listener if configured
   useEffect(() => {
-    if (currentUser?.uid) {
-      const userTasks = loadUserTasks(currentUser.uid, currentUser.email);
+    if (currentUser?.uid || currentUser?.email) {
+      const userTasks = loadUserTasks(currentUser?.uid, currentUser?.email);
       setTasks(userTasks);
 
-      // If Firebase Cloud Database is configured, attach real-time Firestore listener
+      // If Firebase Cloud Database is configured, fetch immediately & attach real-time Firestore listener
       if (isCloudDatabaseReady()) {
         setIsCloudSyncing(true);
+
+        // Immediate fetch from Cloud Database (for logging in from another device)
+        getUserTasksFromCloud(currentUser.uid, currentUser.email)
+          .then((cloudTasks) => {
+            if (cloudTasks && cloudTasks.length > 0) {
+              setTasks(cloudTasks);
+              saveUserTasks(currentUser.uid, cloudTasks, currentUser.email);
+            }
+            setIsCloudSyncing(false);
+          })
+          .catch(err => {
+            console.warn("Cloud initial load notice:", err);
+            setIsCloudSyncing(false);
+          });
+
+        // Real-time listener for live updates across tabs/devices
         const unsubscribe = subscribeToUserTasks(
           currentUser.uid,
+          currentUser.email,
           (cloudTasks) => {
             if (cloudTasks && cloudTasks.length > 0) {
               setTasks(cloudTasks);
@@ -315,6 +333,7 @@ export const TodoProvider = ({ children }) => {
     const newTask = {
       id: parsed.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       userId: currentUser.uid,
+      userEmail: (currentUser.email || '').toLowerCase(),
       title: parsed.title.trim(),
       description: parsed.description || "",
       dueDate: finalDueDate,
@@ -334,7 +353,7 @@ export const TodoProvider = ({ children }) => {
     setTasks(prev => [newTask, ...prev]);
 
     if (isCloudDatabaseReady()) {
-      createTaskInCloud(newTask).catch(err => console.warn("Cloud create failed:", err));
+      createTaskInCloud(newTask, currentUser.email).catch(err => console.warn("Cloud create failed:", err));
     }
 
     if (gcalEventId) {

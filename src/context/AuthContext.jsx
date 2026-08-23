@@ -16,7 +16,9 @@ import {
   firebaseLoginWithEmail,
   firebaseSendPasswordReset,
   firebaseLogout,
-  getFirebaseInstance
+  getFirebaseInstance,
+  saveUserToCloud,
+  getUserFromCloud
 } from '../services/firebaseDb';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -132,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const user = await firebaseLoginWithGoogle();
         createStarterTasks(user.uid, true, user.email);
+        await saveUserToCloud(user);
         setCurrentUser(user);
         setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
         setGoogleModalOpen(false);
@@ -146,7 +149,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Authenticate via Google Chooser Modal (fallback or demo mode)
-  const signInWithGoogleAccount = ({ email, displayName, calendarConnected = true }) => {
+  const signInWithGoogleAccount = async ({ email, displayName, calendarConnected = true }) => {
     const cleanEmail = email.trim().toLowerCase();
     const existing = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
 
@@ -178,24 +181,50 @@ export const AuthProvider = ({ children }) => {
       setSavedAccounts(prev => [userObj, ...prev.filter(a => a.uid !== uid)]);
     }
 
+    if (isCloudDatabaseReady()) {
+      await saveUserToCloud(userObj);
+    }
+
     setCurrentUser(userObj);
     setGoogleModalOpen(false);
     return userObj;
   };
 
-  // Email & Password Login
+  // Email & Password Login (Supports Cross-Device Authentication from Cloud DB)
   const loginWithEmail = async (email, password) => {
     const cleanEmail = email.trim().toLowerCase();
 
+    // 1. Try Firebase Auth if cloud is ready
     if (isCloudDatabaseReady()) {
       try {
         const user = await firebaseLoginWithEmail(cleanEmail, password);
+        await saveUserToCloud(user);
         setCurrentUser(user);
         setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
         return user;
       } catch (err) {
-        console.warn("Firebase email login notice, checking local database fallback:", err);
+        console.warn("Firebase email login notice, checking cloud database & local fallback:", err);
 
+        // Check Cloud Firestore for this user account (created on another device)
+        try {
+          const cloudAccount = await getUserFromCloud(cleanEmail);
+          if (cloudAccount) {
+            if (cloudAccount.password && cloudAccount.password !== password) {
+              throw new Error("Incorrect password. Please try again.");
+            }
+            const updated = { ...cloudAccount, lastLogin: new Date().toISOString() };
+            await saveUserToCloud(updated);
+            setCurrentUser(updated);
+            setSavedAccounts(prev => [updated, ...prev.filter(a => a.uid !== updated.uid)]);
+            return updated;
+          }
+        } catch (cloudErr) {
+          if (cloudErr.message === "Incorrect password. Please try again.") {
+            throw cloudErr;
+          }
+        }
+
+        // Check local saved accounts
         const localAccount = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
         if (localAccount) {
           if (localAccount.password && localAccount.password !== password) {
@@ -222,8 +251,18 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    // Local fallback check
-    const account = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
+    // 2. Local fallback check + Cloud fallback
+    let account = savedAccounts.find(a => a.email.toLowerCase() === cleanEmail);
+
+    if (!account && isCloudDatabaseReady()) {
+      try {
+        const cloudUser = await getUserFromCloud(cleanEmail);
+        if (cloudUser) {
+          account = cloudUser;
+        }
+      } catch (e) {}
+    }
+
     if (!account) {
       throw new Error("No account found with this email. Please click Sign Up to register.");
     }
@@ -236,12 +275,15 @@ export const AuthProvider = ({ children }) => {
       ...account,
       lastLogin: new Date().toISOString()
     };
+    if (isCloudDatabaseReady()) {
+      saveUserToCloud(updated);
+    }
     setCurrentUser(updated);
-    setSavedAccounts(prev => prev.map(a => a.uid === updated.uid ? updated : a));
+    setSavedAccounts(prev => [updated, ...prev.filter(a => a.uid !== updated.uid)]);
     return updated;
   };
 
-  // Sign Up with Email & Password
+  // Sign Up with Email & Password (Persisted to Cloud Database & Local Storage)
   const signupWithEmail = async (displayName, email, password) => {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !password) {
@@ -251,12 +293,14 @@ export const AuthProvider = ({ children }) => {
     if (isCloudDatabaseReady()) {
       try {
         const user = await firebaseSignupWithEmail(displayName, cleanEmail, password);
+        const userWithPassword = { ...user, password };
         createStarterTasks(user.uid, false, user.email);
+        await saveUserToCloud(userWithPassword);
         setCurrentUser(user);
-        setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
+        setSavedAccounts(prev => [userWithPassword, ...prev.filter(a => a.uid !== user.uid)]);
         return user;
       } catch (err) {
-        console.warn("Firebase email signup notice, falling back to local registration:", err);
+        console.warn("Firebase email signup notice, falling back to database registration:", err);
         if (err.code === 'auth/email-already-in-use') {
           throw new Error(
             "An account with this email already exists. Please Log In or click 'Continue with Google'."
@@ -285,6 +329,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         createStarterTasks(uid, false, cleanEmail);
+        await saveUserToCloud(newUser);
         setSavedAccounts(prev => [newUser, ...prev]);
         setCurrentUser(newUser);
         return newUser;
@@ -312,6 +357,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     createStarterTasks(uid, false, cleanEmail);
+    if (isCloudDatabaseReady()) {
+      saveUserToCloud(newUser);
+    }
     setSavedAccounts(prev => [newUser, ...prev]);
     setCurrentUser(newUser);
     return newUser;

@@ -9,6 +9,7 @@ import {
   Sparkles,
   ChevronRight,
   X,
+  Minus,
   Plus
 } from 'lucide-react';
 
@@ -65,24 +66,25 @@ export const SetupChecklistWidget = () => {
 
   return (
     <div className="setup-checklist-card animate-fade-in">
-      {/* Top action buttons */}
+      {/* Top action buttons (Minimize / Dismiss) */}
       <div className="setup-widget-top-actions">
         <button
           type="button"
-          className="setup-widget-min-btn"
+          className="setup-widget-action-btn setup-widget-min-btn"
           onClick={() => setIsMinimized(true)}
-          title="Minimize setup widget"
+          title="Minimize setup guide"
           aria-label="Minimize"
         >
-          _
+          <Minus size={14} />
         </button>
         <button
           type="button"
-          className="setup-widget-close"
+          className="setup-widget-action-btn setup-widget-close-btn"
           onClick={() => setIsDismissed(true)}
+          title="Dismiss setup guide"
           aria-label="Dismiss setup guide"
         >
-          <X size={15} />
+          <X size={14} />
         </button>
       </div>
 

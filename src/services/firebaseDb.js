@@ -8,6 +8,7 @@ import {
   getFirestore,
   collection,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -221,18 +222,86 @@ export const firebaseLogout = async () => {
 };
 
 /**
- * Real-Time Firestore Tasks Listener
- * Listens to live task updates across all devices/tabs for the authenticated user.
+ * Cloud User Profile Sync
+ * Saves user accounts in Firestore so any device can authenticate and access tasks.
  */
-export const subscribeToUserTasks = (userId, onUpdate, onError) => {
+export const saveUserToCloud = async (user) => {
   const { db } = getFirebaseInstance();
-  if (!db || !userId) return () => {};
+  if (!db || !user?.email) return null;
 
   try {
-    const tasksQuery = query(
-      collection(db, 'tasks'),
-      where('userId', '==', userId)
-    );
+    const cleanEmail = user.email.trim().toLowerCase();
+    const docId = `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const userRef = doc(db, 'users', docId);
+
+    const dataToSave = {
+      uid: user.uid,
+      email: cleanEmail,
+      displayName: user.displayName || cleanEmail.split('@')[0],
+      password: user.password || null,
+      provider: user.provider || 'password',
+      calendarConnected: Boolean(user.calendarConnected),
+      lastCalendarSync: user.lastCalendarSync || null,
+      reminderOffsets: user.reminderOffsets || [10, 60],
+      updatedAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString()
+    };
+
+    await setDoc(userRef, dataToSave, { merge: true });
+    return dataToSave;
+  } catch (err) {
+    console.warn("Firestore saveUserToCloud notice:", err);
+    return null;
+  }
+};
+
+/**
+ * Fetch User Profile from Cloud Database by Email
+ */
+export const getUserFromCloud = async (email) => {
+  const { db } = getFirebaseInstance();
+  if (!db || !email) return null;
+
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const docId = `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const userRef = doc(db, 'users', docId);
+    
+    // First try direct doc get
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+
+    // Fallback: Query by email field
+    const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return querySnapshot.docs[0].data();
+    }
+
+    return null;
+  } catch (err) {
+    console.warn("Firestore getUserFromCloud notice:", err);
+    return null;
+  }
+};
+
+/**
+ * Real-Time Firestore Tasks Listener
+ * Listens to live task updates across all devices/tabs for the authenticated user by userEmail or userId.
+ */
+export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
+  const { db } = getFirebaseInstance();
+  if (!db || (!userId && !userEmail)) return () => {};
+
+  try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
+    // Listen by email if available, otherwise by userId
+    const tasksQuery = cleanEmail
+      ? query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail))
+      : query(collection(db, 'tasks'), where('userId', '==', userId));
 
     const unsubscribe = onSnapshot(
       tasksQuery,
@@ -257,16 +326,60 @@ export const subscribeToUserTasks = (userId, onUpdate, onError) => {
 };
 
 /**
- * Create Task in Cloud Database
+ * Fetch All Tasks from Cloud Database for User
  */
-export const createTaskInCloud = async (task) => {
+export const getUserTasksFromCloud = async (userId, userEmail) => {
   const { db } = getFirebaseInstance();
-  if (!db || !task?.userId) return null;
+  if (!db || (!userId && !userEmail)) return [];
 
   try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    let q;
+
+    if (cleanEmail) {
+      q = query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail));
+    } else {
+      q = query(collection(db, 'tasks'), where('userId', '==', userId));
+    }
+
+    const querySnapshot = await getDocs(q);
+    const tasks = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    // If query by email was empty and we have userId, try query by userId as fallback
+    if (tasks.length === 0 && cleanEmail && userId) {
+      const fallbackQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
+      const fallbackSnap = await getDocs(fallbackQuery);
+      return fallbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    return tasks;
+  } catch (err) {
+    console.warn("Failed to fetch cloud tasks:", err);
+    return [];
+  }
+};
+
+/**
+ * Create Task in Cloud Database
+ */
+export const createTaskInCloud = async (task, userEmail = null) => {
+  const { db } = getFirebaseInstance();
+  if (!db || !task?.id) return null;
+
+  try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : (task.userEmail || '').toLowerCase();
+    const taskData = {
+      ...task,
+      userEmail: cleanEmail || task.userEmail || null,
+      updatedAt: new Date().toISOString()
+    };
+
     const taskRef = doc(db, 'tasks', task.id);
-    await setDoc(taskRef, task);
-    return task;
+    await setDoc(taskRef, taskData, { merge: true });
+    return taskData;
   } catch (err) {
     console.error("Failed to create task in Firestore:", err);
     throw err;
@@ -311,18 +424,31 @@ export const deleteTaskInCloud = async (taskId) => {
 };
 
 /**
- * Sync Local Tasks to Cloud Database on First Connect
+ * Sync Local Tasks to Cloud Database
  */
-export const syncLocalTasksToCloud = async (userId, localTasks) => {
+export const syncLocalTasksToCloud = async (userId, userEmail, localTasks) => {
   const { db } = getFirebaseInstance();
-  if (!db || !userId || !Array.isArray(localTasks)) return;
+  if (!db || !Array.isArray(localTasks) || localTasks.length === 0) return;
 
   try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+
     for (const task of localTasks) {
+      if (!task?.id) continue;
       const taskRef = doc(db, 'tasks', task.id);
-      await setDoc(taskRef, { ...task, userId }, { merge: true });
+      await setDoc(
+        taskRef,
+        {
+          ...task,
+          userId: userId || task.userId,
+          userEmail: cleanEmail || task.userEmail || null,
+          updatedAt: task.updatedAt || new Date().toISOString()
+        },
+        { merge: true }
+      );
     }
   } catch (err) {
     console.error("Failed to sync initial local tasks to Firestore:", err);
   }
 };
+
