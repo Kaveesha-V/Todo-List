@@ -294,10 +294,15 @@ export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
 
   try {
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
-    const taskMap = new Map();
+    let emailTasks = new Map();
+    let idTasks = new Map();
 
     const dispatchUpdates = () => {
-      const allTasks = Array.from(taskMap.values()).sort((a, b) => {
+      const combinedMap = new Map();
+      idTasks.forEach((task, id) => combinedMap.set(id, task));
+      emailTasks.forEach((task, id) => combinedMap.set(id, task));
+
+      const allTasks = Array.from(combinedMap.values()).sort((a, b) => {
         return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
       });
       onUpdate(allTasks);
@@ -311,8 +316,9 @@ export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
       unsubEmail = onSnapshot(
         qEmail,
         (snapshot) => {
+          emailTasks = new Map();
           snapshot.docs.forEach(doc => {
-            taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+            emailTasks.set(doc.id, { id: doc.id, ...doc.data() });
           });
           dispatchUpdates();
         },
@@ -328,8 +334,9 @@ export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
       unsubId = onSnapshot(
         qId,
         (snapshot) => {
+          idTasks = new Map();
           snapshot.docs.forEach(doc => {
-            taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+            idTasks.set(doc.id, { id: doc.id, ...doc.data() });
           });
           dispatchUpdates();
         },
@@ -421,7 +428,7 @@ export const createTaskInCloud = async (task, userEmail = null) => {
 };
 
 /**
- * Update Task in Cloud Database
+ * Update Task in Cloud Database (Uses setDoc with merge for resilience)
  */
 export const updateTaskInCloud = async (taskId, updates) => {
   const { db } = getFirebaseInstance();
@@ -429,10 +436,14 @@ export const updateTaskInCloud = async (taskId, updates) => {
 
   try {
     const taskRef = doc(db, 'tasks', taskId);
-    await updateDoc(taskRef, {
-      ...updates,
-      updatedAt: new Date().toISOString()
-    });
+    await setDoc(
+      taskRef,
+      {
+        ...updates,
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
     console.error("Failed to update task in Firestore:", err);

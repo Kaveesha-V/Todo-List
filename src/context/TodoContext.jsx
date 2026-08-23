@@ -176,15 +176,45 @@ export const TodoProvider = ({ children }) => {
     saveStoredTheme(theme);
   }, [theme]);
 
-  // Persist tasks strictly scoped to current user
+  // Persist tasks strictly scoped to current user & broadcast live across tabs
   useEffect(() => {
-    if (currentUser?.uid && tasks.length > 0) {
+    if (currentUser?.uid) {
       saveUserTasks(currentUser.uid, tasks, currentUser.email);
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('aura_live_task_sync');
+          bc.postMessage({
+            type: 'LIVE_TASK_SYNC',
+            userId: currentUser.uid,
+            tasks,
+            timestamp: Date.now()
+          });
+          bc.close();
+        } catch (e) {}
+      }
     }
   }, [tasks, currentUser?.uid, currentUser?.email]);
 
-  // Multi-tab storage listener for real-time synchronization
+  // Live Instant Multi-Tab BroadcastChannel + Storage Event Listener
   useEffect(() => {
+    let channel = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        channel = new BroadcastChannel('aura_live_task_sync');
+        channel.onmessage = (event) => {
+          if (
+            event.data?.type === 'LIVE_TASK_SYNC' &&
+            event.data?.userId === currentUser?.uid &&
+            Array.isArray(event.data?.tasks)
+          ) {
+            setTasks(event.data.tasks);
+          }
+        };
+      } catch (e) {
+        console.warn("BroadcastChannel notice:", e);
+      }
+    }
+
     const handleStorageChange = (e) => {
       if (currentUser && e.key === `aura_tasks_${currentUser.uid}` && e.newValue) {
         try {
@@ -194,8 +224,12 @@ export const TodoProvider = ({ children }) => {
         }
       }
     };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    return () => {
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [currentUser?.uid]);
 
   // Keep activeTask in sync with tasks array
