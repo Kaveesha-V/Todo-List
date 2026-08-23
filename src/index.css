@@ -7805,24 +7805,55 @@ body::before, body::after {
 }
 
 /* ==========================================================================
-   SETUP CHECKLIST WIDGET & ACTION BUTTONS STYLING
+   SETUP CHECKLIST WIDGET & ACTION BUTTONS (FLOATING DOCKED CARD)
    ========================================================================== */
 
 .setup-checklist-card {
-  position: relative;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  z-index: 990;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-medium);
   border-radius: var(--radius-xl);
   padding: 22px 20px 20px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-  transition: all var(--transition-normal);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  animation: setupWidgetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes setupWidgetSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes setupWidgetFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .setup-checklist-card:hover {
-  border-color: var(--border-medium);
-  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .setup-widget-top-actions {
@@ -7831,17 +7862,17 @@ body::before, body::after {
   right: 14px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   z-index: 10;
 }
 
 .setup-widget-action-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--bg-surface-hover);
   border: 1px solid var(--border-subtle);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7853,14 +7884,14 @@ body::before, body::after {
 .setup-widget-min-btn:hover {
   background: var(--border-medium);
   color: var(--text-primary);
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 
 .setup-widget-close-btn:hover {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.18);
   color: #EF4444;
-  border-color: rgba(239, 68, 68, 0.3);
-  transform: scale(1.08);
+  border-color: rgba(239, 68, 68, 0.35);
+  transform: scale(1.1);
 }
 
 .setup-illustration-banner {
@@ -7874,10 +7905,11 @@ body::before, body::after {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.18) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  border: 1px solid rgba(99, 102, 241, 0.25);
 }
 
 .setup-calendar-icon {
@@ -7888,7 +7920,7 @@ body::before, body::after {
   position: absolute;
   top: -4px;
   right: -4px;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
 }
 
 .setup-card-title {
@@ -7924,7 +7956,7 @@ body::before, body::after {
   height: 100%;
   background: linear-gradient(90deg, #6366F1 0%, #10B981 100%);
   border-radius: 999px;
-  transition: width 0.4s ease;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .setup-progress-text {
@@ -7958,9 +7990,9 @@ body::before, body::after {
 }
 
 .setup-step-item.done {
-  opacity: 0.8;
-  background: rgba(16, 185, 129, 0.05);
-  border-color: rgba(16, 185, 129, 0.2);
+  opacity: 0.85;
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.22);
 }
 
 .setup-step-check {
@@ -8002,66 +8034,62 @@ body::before, body::after {
   color: var(--text-primary);
 }
 
-.setup-complete-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(16, 185, 129, 0.15);
-  color: #10B981;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  margin-top: 10px;
+.setup-card-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.setup-all-done-btn {
-  width: 100%;
-  margin-top: 14px;
-  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  color: #FFFFFF;
-  border: none;
-  padding: 10px 16px;
+.setup-check-later-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 6px 12px;
   border-radius: var(--radius-md);
-  font-size: 0.86rem;
-  font-weight: 700;
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
   transition: all var(--transition-fast);
 }
 
-.setup-all-done-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+.setup-check-later-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
 }
 
 .setup-checklist-minimized-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 990;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: var(--bg-surface);
   border: 1px solid var(--border-medium);
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-primary);
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   transition: all var(--transition-fast);
+  animation: setupWidgetFadeIn 0.25s ease;
 }
 
 .setup-checklist-minimized-pill:hover {
   border-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
 }
 
 .minimized-bar-track {
-  width: 45px;
-  height: 4px;
+  width: 50px;
+  height: 5px;
   background: var(--bg-surface-hover);
   border-radius: 999px;
   overflow: hidden;
@@ -8071,6 +8099,21 @@ body::before, body::after {
   height: 100%;
   background: #10B981;
   border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+@media (max-width: 640px) {
+  .setup-checklist-card {
+    bottom: 16px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-height: 85vh;
+  }
+  .setup-checklist-minimized-pill {
+    bottom: 16px;
+    right: 16px;
+  }
 }
 
 
