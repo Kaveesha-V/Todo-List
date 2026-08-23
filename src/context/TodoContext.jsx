@@ -714,6 +714,8 @@ export const TodoProvider = ({ children }) => {
     <TodoContext.Provider
       value={{
         tasks,
+        activeTask,
+        setActiveTask,
         user: currentUser,
         theme,
         toggleTheme,
