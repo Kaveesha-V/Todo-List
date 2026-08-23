@@ -14,7 +14,10 @@ import {
   createTaskInCloud,
   updateTaskInCloud,
   deleteTaskInCloud,
-  syncLocalTasksToCloud
+  syncLocalTasksToCloud,
+  saveUserProjectsToCloud,
+  getUserProjectsFromCloud,
+  subscribeToUserProjects
 } from '../services/firebaseDb';
 import {
   updateGoogleCalendarEventStatus,
@@ -154,6 +157,16 @@ export const TodoProvider = ({ children }) => {
     setProjects(prev => {
       const updated = [...prev, newProj];
       try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
+      if (currentUser?.uid) {
+        saveUserProjectsToCloud(currentUser.uid, currentUser.email, updated);
+      }
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('aura_live_projects_sync');
+          bc.postMessage({ type: 'LIVE_PROJECTS_SYNC', userId: currentUser?.uid, projects: updated });
+          bc.close();
+        } catch (e) {}
+      }
       return updated;
     });
     addToast(`Project #${name} created`, "success");
@@ -163,6 +176,16 @@ export const TodoProvider = ({ children }) => {
     setProjects(prev => {
       const updated = prev.filter(p => p.id !== projectId && p.name.toLowerCase() !== String(projectId).toLowerCase());
       try { localStorage.setItem('aura_projects', JSON.stringify(updated)); } catch (e) {}
+      if (currentUser?.uid) {
+        saveUserProjectsToCloud(currentUser.uid, currentUser.email, updated);
+      }
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const bc = new BroadcastChannel('aura_live_projects_sync');
+          bc.postMessage({ type: 'LIVE_PROJECTS_SYNC', userId: currentUser?.uid, projects: updated });
+          bc.close();
+        } catch (e) {}
+      }
       return updated;
     });
     addToast("Project removed", "info");
@@ -218,6 +241,56 @@ export const TodoProvider = ({ children }) => {
     }
   }, [currentUser?.uid, currentUser?.email]);
 
+  // Real-time Projects Cloud Database Listener & Multi-Device Sync
+  useEffect(() => {
+    if (currentUser?.uid || currentUser?.email) {
+      if (isCloudDatabaseReady()) {
+        getUserProjectsFromCloud(currentUser.uid, currentUser.email)
+          .then((cloudProjects) => {
+            if (Array.isArray(cloudProjects) && cloudProjects.length > 0) {
+              setProjects(cloudProjects);
+              try { localStorage.setItem('aura_projects', JSON.stringify(cloudProjects)); } catch (e) {}
+            }
+          })
+          .catch(() => {});
+
+        const unsubProj = subscribeToUserProjects(
+          currentUser.uid,
+          currentUser.email,
+          (cloudProjects) => {
+            if (Array.isArray(cloudProjects)) {
+              setProjects(cloudProjects);
+              try { localStorage.setItem('aura_projects', JSON.stringify(cloudProjects)); } catch (e) {}
+            }
+          }
+        );
+        return () => unsubProj();
+      }
+    }
+  }, [currentUser?.uid, currentUser?.email]);
+
+  // Live Multi-Tab Project Sync Listener
+  useEffect(() => {
+    let channel = null;
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        channel = new BroadcastChannel('aura_live_projects_sync');
+        channel.onmessage = (event) => {
+          if (
+            event.data?.type === 'LIVE_PROJECTS_SYNC' &&
+            event.data?.userId === currentUser?.uid &&
+            Array.isArray(event.data?.projects)
+          ) {
+            setProjects(event.data.projects);
+          }
+        };
+      } catch (e) {}
+    }
+    return () => {
+      if (channel) channel.close();
+    };
+  }, [currentUser?.uid]);
+
   // 3-Second Smooth Background Sync Interval (as requested by user)
   useEffect(() => {
     if (!currentUser?.uid || !isCloudDatabaseReady()) return;
@@ -227,6 +300,14 @@ export const TodoProvider = ({ children }) => {
         .then((cloudTasks) => {
           if (cloudTasks && cloudTasks.length > 0) {
             updateTasksIfChanged(cloudTasks);
+          }
+        })
+        .catch(() => {});
+
+      getUserProjectsFromCloud(currentUser.uid, currentUser.email)
+        .then((cloudProjects) => {
+          if (Array.isArray(cloudProjects) && cloudProjects.length > 0) {
+            setProjects(cloudProjects);
           }
         })
         .catch(() => {});

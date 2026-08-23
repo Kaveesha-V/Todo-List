@@ -513,3 +513,93 @@ export const syncLocalTasksToCloud = async (userId, userEmail, localTasks) => {
   }
 };
 
+/**
+ * Save User Projects to Cloud Database (Enables Real-Time Multi-Device Project Sync)
+ */
+export const saveUserProjectsToCloud = async (userId, userEmail, projects) => {
+  const { db } = getFirebaseInstance();
+  if (!db || (!userId && !userEmail) || !Array.isArray(projects)) return;
+
+  try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    const projectData = {
+      projects,
+      userId: userId || null,
+      userEmail: cleanEmail,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (userId) {
+      await setDoc(doc(db, 'user_projects', userId), projectData, { merge: true });
+    }
+    if (cleanEmail) {
+      const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_-]/g, '_');
+      await setDoc(doc(db, 'user_projects', `email_${emailDocId}`), projectData, { merge: true });
+    }
+  } catch (err) {
+    console.warn("Failed to save projects to Cloud DB:", err);
+  }
+};
+
+/**
+ * Get User Projects from Cloud Database
+ */
+export const getUserProjectsFromCloud = async (userId, userEmail) => {
+  const { db } = getFirebaseInstance();
+  if (!db || (!userId && !userEmail)) return null;
+
+  try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    
+    if (userId) {
+      const snap = await getDoc(doc(db, 'user_projects', userId));
+      if (snap.exists() && Array.isArray(snap.data()?.projects)) {
+        return snap.data().projects;
+      }
+    }
+
+    if (cleanEmail) {
+      const emailDocId = cleanEmail.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const snap = await getDoc(doc(db, 'user_projects', `email_${emailDocId}`));
+      if (snap.exists() && Array.isArray(snap.data()?.projects)) {
+        return snap.data().projects;
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.warn("Failed to fetch user projects from Cloud DB:", err);
+    return null;
+  }
+};
+
+/**
+ * Real-time Listener for User Projects across Devices
+ */
+export const subscribeToUserProjects = (userId, userEmail, onUpdate) => {
+  const { db } = getFirebaseInstance();
+  if (!db || (!userId && !userEmail)) return () => {};
+
+  try {
+    const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    const docId = userId || `email_${cleanEmail.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+
+    const unsub = onSnapshot(doc(db, 'user_projects', docId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (Array.isArray(data?.projects)) {
+          onUpdate(data.projects);
+        }
+      }
+    }, (err) => {
+      console.warn("Projects real-time listener notice:", err);
+    });
+
+    return unsub;
+  } catch (err) {
+    console.warn("Failed to attach projects listener:", err);
+    return () => {};
+  }
+};
+
+

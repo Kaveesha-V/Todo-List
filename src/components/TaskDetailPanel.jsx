@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTodo } from '../context/TodoContext';
+import { useAuth } from '../context/AuthContext';
 import {
   formatCalendarEventTime,
   toInputDateTimeString,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export const TaskDetailPanel = () => {
+  const { currentUser } = useAuth();
   const {
     activeTask,
     setActiveTask,
@@ -30,7 +32,7 @@ export const TaskDetailPanel = () => {
     deleteSubtask,
     generateAISubtasks,
     syncTaskToGoogleCalendar,
-    user
+    projects
   } = useTodo();
 
   const [newSubtaskInput, setNewSubtaskInput] = useState('');
@@ -130,7 +132,7 @@ export const TaskDetailPanel = () => {
                 Sync Now
               </button>
             </div>
-          ) : user.calendarConnected && activeTask.dueDate ? (
+          ) : currentUser?.calendarConnected && activeTask.dueDate ? (
             <div className="gcal-sync-banner" style={{ background: 'var(--bg-surface-subtle)', borderColor: 'var(--border-subtle)' }}>
               <div className="gcal-info-left">
                 <div className="gcal-icon-wrap" style={{ color: 'var(--text-secondary)' }}>

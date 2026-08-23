@@ -12,7 +12,8 @@ import {
   AlertCircle,
   ExternalLink,
   RotateCcw,
-  Lock
+  Lock,
+  Pencil
 } from 'lucide-react';
 
 export const TaskCard = React.memo(({ task }) => {
@@ -164,8 +165,21 @@ export const TaskCard = React.memo(({ task }) => {
           </div>
         </div>
 
-        {/* Action Buttons (Delete available for all tasks) */}
+        {/* Action Buttons (Edit + Delete available for all tasks) */}
         <div className="task-card-actions">
+          <button
+            type="button"
+            className="card-action-btn edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTask(task);
+            }}
+            title="Edit task"
+            aria-label="Edit task"
+          >
+            <Pencil size={14} />
+          </button>
+
           <button
             type="button"
             className="card-action-btn delete"
