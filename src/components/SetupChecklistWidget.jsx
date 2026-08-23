@@ -16,6 +16,7 @@ export const SetupChecklistWidget = () => {
   const { tasks, setIsSettingsOpen, setActiveNavTab, addToast, toggleTaskComplete } = useTodo();
   const { currentUser, loginWithGoogle } = useAuth();
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
 
   if (isDismissed) return null;
 
@@ -46,17 +47,44 @@ export const SetupChecklistWidget = () => {
     }
   };
 
+  if (isMinimized) {
+    return (
+      <div
+        className="setup-checklist-minimized-pill animate-fade-in"
+        onClick={() => setIsMinimized(false)}
+        title="Expand Finish your setup checklist"
+      >
+        <span className="minimized-sparkle">✨</span>
+        <span className="minimized-title">Setup: {completedSteps}/3</span>
+        <div className="minimized-bar-track">
+          <div className="minimized-bar-fill" style={{ width: `${progressPercent}%` }}></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="setup-checklist-card animate-fade-in">
-      {/* Close button */}
-      <button
-        type="button"
-        className="setup-widget-close"
-        onClick={() => setIsDismissed(true)}
-        aria-label="Dismiss setup guide"
-      >
-        <X size={15} />
-      </button>
+      {/* Top action buttons */}
+      <div className="setup-widget-top-actions">
+        <button
+          type="button"
+          className="setup-widget-min-btn"
+          onClick={() => setIsMinimized(true)}
+          title="Minimize setup widget"
+          aria-label="Minimize"
+        >
+          _
+        </button>
+        <button
+          type="button"
+          className="setup-widget-close"
+          onClick={() => setIsDismissed(true)}
+          aria-label="Dismiss setup guide"
+        >
+          <X size={15} />
+        </button>
+      </div>
 
       {/* Decorative Icon */}
       <div className="setup-illustration-banner">

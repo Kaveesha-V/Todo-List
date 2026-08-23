@@ -66,6 +66,13 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
     }
   };
 
+  const handleNavClick = (tabId) => {
+    setActiveNavTab(tabId);
+    if (window.innerWidth <= 768 && onToggle) {
+      onToggle();
+    }
+  };
+
   return (
     <>
     <aside className={`todoist-sidebar ${isOpen ? 'open' : 'closed'}`}>
@@ -92,7 +99,10 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
           <button
             type="button"
             className="sidebar-action-icon"
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => {
+              setIsSettingsOpen(true);
+              if (window.innerWidth <= 768 && onToggle) onToggle();
+            }}
             title="Notifications & Settings"
           >
             <Bell size={16} />
@@ -101,7 +111,8 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
             type="button"
             className="sidebar-action-icon"
             onClick={onToggle}
-            title="Toggle Sidebar"
+            title="Close Sidebar"
+            aria-label="Close Sidebar"
           >
             <PanelLeftClose size={16} />
           </button>
@@ -114,7 +125,11 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
             <button
               type="button"
               className="dropdown-item"
-              onClick={() => { setOnboardingOpen(true); setUserDropdownOpen(false); }}
+              onClick={() => {
+                setOnboardingOpen(true);
+                setUserDropdownOpen(false);
+                if (window.innerWidth <= 768 && onToggle) onToggle();
+              }}
             >
               <Sparkles size={14} />
               <span>Restart Setup Guide</span>
@@ -122,7 +137,11 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
             <button
               type="button"
               className="dropdown-item"
-              onClick={() => { setIsSettingsOpen(true); setUserDropdownOpen(false); }}
+              onClick={() => {
+                setIsSettingsOpen(true);
+                setUserDropdownOpen(false);
+                if (window.innerWidth <= 768 && onToggle) onToggle();
+              }}
             >
               <HelpCircle size={14} />
               <span>Settings & Preferences</span>
@@ -141,7 +160,13 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
 
       {/* Finish Your Setup Mini Banner (Screenshots 3, 4, 5) */}
       {completedSteps < 3 && (
-        <div className="sidebar-setup-banner" onClick={() => setOnboardingOpen(true)}>
+        <div
+          className="sidebar-setup-banner"
+          onClick={() => {
+            setOnboardingOpen(true);
+            if (window.innerWidth <= 768 && onToggle) onToggle();
+          }}
+        >
           <div className="sidebar-setup-top">
             <span>Finish your setup</span>
             <span className="setup-count">{completedSteps}/3 complete</span>
@@ -191,7 +216,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'inbox' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('inbox')}
+          onClick={() => handleNavClick('inbox')}
         >
           <Inbox size={18} className="nav-icon" />
           <span className="nav-label">Inbox</span>
@@ -201,7 +226,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'today' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('today')}
+          onClick={() => handleNavClick('today')}
         >
           <Calendar size={18} className="nav-icon today" />
           <span className="nav-label">Today</span>
@@ -211,7 +236,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'upcoming' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('upcoming')}
+          onClick={() => handleNavClick('upcoming')}
         >
           <CalendarDays size={18} className="nav-icon upcoming" />
           <span className="nav-label">Upcoming</span>
@@ -220,7 +245,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'filters' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('filters')}
+          onClick={() => handleNavClick('filters')}
         >
           <Tag size={18} className="nav-icon filters" />
           <span className="nav-label">Filters & Labels</span>
@@ -229,7 +254,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'reporting' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('reporting')}
+          onClick={() => handleNavClick('reporting')}
         >
           <BarChart3 size={18} className="nav-icon reporting" />
           <span className="nav-label">Reporting & AI Digest</span>
@@ -238,7 +263,7 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className={`sidebar-nav-item ${activeNavTab === 'kanban' ? 'active' : ''}`}
-          onClick={() => setActiveNavTab('kanban')}
+          onClick={() => handleNavClick('kanban')}
         >
           <LayoutGrid size={18} className="nav-icon kanban" />
           <span className="nav-label">Kanban Board</span>
@@ -331,7 +356,10 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className="sidebar-footer-btn"
-          onClick={() => setOnboardingOpen(true)}
+          onClick={() => {
+            setOnboardingOpen(true);
+            if (window.innerWidth <= 768 && onToggle) onToggle();
+          }}
         >
           <Users size={16} />
           <span>Add a team</span>
@@ -339,7 +367,10 @@ export const Sidebar = ({ isOpen, onToggle, onOpenSearch, onOpenAddModal }) => {
         <button
           type="button"
           className="sidebar-footer-btn"
-          onClick={() => setIsSettingsOpen(true)}
+          onClick={() => {
+            setIsSettingsOpen(true);
+            if (window.innerWidth <= 768 && onToggle) onToggle();
+          }}
         >
           <HelpCircle size={16} />
           <span>Help & resources</span>
