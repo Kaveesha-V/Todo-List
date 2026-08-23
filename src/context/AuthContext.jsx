@@ -133,7 +133,6 @@ export const AuthProvider = ({ children }) => {
     if (isCloudDatabaseReady()) {
       try {
         const user = await firebaseLoginWithGoogle();
-        createStarterTasks(user.uid, true, user.email);
         await saveUserToCloud(user);
         setCurrentUser(user);
         setSavedAccounts(prev => [user, ...prev.filter(a => a.uid !== user.uid)]);
@@ -177,7 +176,6 @@ export const AuthProvider = ({ children }) => {
         lastLogin: new Date().toISOString()
       };
 
-      createStarterTasks(uid, calendarConnected);
       setSavedAccounts(prev => [userObj, ...prev.filter(a => a.uid !== uid)]);
     }
 
@@ -231,7 +229,6 @@ export const AuthProvider = ({ children }) => {
             throw new Error("Incorrect password. Please try again.");
           }
           const updated = { ...localAccount, lastLogin: new Date().toISOString() };
-          createStarterTasks(updated.uid, false, cleanEmail);
           setCurrentUser(updated);
           setSavedAccounts(prev => prev.map(a => a.uid === updated.uid ? updated : a));
           return updated;

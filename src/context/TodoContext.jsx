@@ -127,6 +127,12 @@ export const TodoProvider = ({ children }) => {
       if (isCloudDatabaseReady()) {
         setIsCloudSyncing(true);
 
+        // If local tasks exist (e.g. from current device), sync them to cloud so other devices get them
+        if (userTasks && userTasks.length > 0) {
+          syncLocalTasksToCloud(currentUser.uid, currentUser.email, userTasks)
+            .catch(e => console.warn("Local to cloud sync notice:", e));
+        }
+
         // Immediate fetch from Cloud Database (for logging in from another device)
         getUserTasksFromCloud(currentUser.uid, currentUser.email)
           .then((cloudTasks) => {

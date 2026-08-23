@@ -32,21 +32,10 @@ import {
   signOut
 } from 'firebase/auth';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || import.meta.env.FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || import.meta.env.FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || import.meta.env.FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || import.meta.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || import.meta.env.FIREBASE_APP_ID
-};
+import { getFirebaseConfig, isFirebaseConfigured } from '../config/firebase';
 
 export const isCloudDatabaseReady = () => {
-  return Boolean(
-    firebaseConfig.apiKey &&
-    firebaseConfig.projectId &&
-    firebaseConfig.apiKey.length > 5
-  );
+  return isFirebaseConfigured();
 };
 
 // Initialize Firebase App
@@ -57,7 +46,8 @@ let auth = null;
 export const getFirebaseInstance = () => {
   if (!isCloudDatabaseReady()) return { app: null, db: null, auth: null };
   try {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+    const config = getFirebaseConfig();
+    app = getApps().length === 0 ? initializeApp(config) : getApp();
     db = getFirestore(app);
     auth = getAuth(app);
     return { app, db, auth };
@@ -248,6 +238,13 @@ export const saveUserToCloud = async (user) => {
     };
 
     await setDoc(userRef, dataToSave, { merge: true });
+
+    // Also write by user.uid if available
+    if (user.uid && user.uid !== docId) {
+      const uidRef = doc(db, 'users', user.uid);
+      await setDoc(uidRef, dataToSave, { merge: true });
+    }
+
     return dataToSave;
   } catch (err) {
     console.warn("Firestore saveUserToCloud notice:", err);
@@ -267,13 +264,13 @@ export const getUserFromCloud = async (email) => {
     const docId = `usr_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
     const userRef = doc(db, 'users', docId);
     
-    // First try direct doc get
+    // 1. Try direct doc get by email key
     const docSnap = await getDoc(userRef);
     if (docSnap.exists()) {
       return docSnap.data();
     }
 
-    // Fallback: Query by email field
+    // 2. Query by email field
     const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
@@ -289,7 +286,7 @@ export const getUserFromCloud = async (email) => {
 
 /**
  * Real-Time Firestore Tasks Listener
- * Listens to live task updates across all devices/tabs for the authenticated user by userEmail or userId.
+ * Listens to live task updates across all devices/tabs for the authenticated user by BOTH userEmail and userId.
  */
 export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
   const { db } = getFirebaseInstance();
@@ -297,28 +294,56 @@ export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
 
   try {
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
+    const taskMap = new Map();
 
-    // Listen by email if available, otherwise by userId
-    const tasksQuery = cleanEmail
-      ? query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail))
-      : query(collection(db, 'tasks'), where('userId', '==', userId));
+    const dispatchUpdates = () => {
+      const allTasks = Array.from(taskMap.values()).sort((a, b) => {
+        return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
+      });
+      onUpdate(allTasks);
+    };
 
-    const unsubscribe = onSnapshot(
-      tasksQuery,
-      (snapshot) => {
-        const cloudTasks = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        onUpdate(cloudTasks);
-      },
-      (error) => {
-        console.error("Firestore real-time sync error:", error);
-        if (onError) onError(error);
-      }
-    );
+    let unsubEmail = null;
+    let unsubId = null;
 
-    return unsubscribe;
+    if (cleanEmail) {
+      const qEmail = query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail));
+      unsubEmail = onSnapshot(
+        qEmail,
+        (snapshot) => {
+          snapshot.docs.forEach(doc => {
+            taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+          });
+          dispatchUpdates();
+        },
+        (err) => {
+          console.warn("Firestore email tasks snapshot error:", err);
+          if (onError) onError(err);
+        }
+      );
+    }
+
+    if (userId) {
+      const qId = query(collection(db, 'tasks'), where('userId', '==', userId));
+      unsubId = onSnapshot(
+        qId,
+        (snapshot) => {
+          snapshot.docs.forEach(doc => {
+            taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+          });
+          dispatchUpdates();
+        },
+        (err) => {
+          console.warn("Firestore userId tasks snapshot error:", err);
+          if (onError) onError(err);
+        }
+      );
+    }
+
+    return () => {
+      if (unsubEmail) unsubEmail();
+      if (unsubId) unsubId();
+    };
   } catch (err) {
     console.warn("Could not attach Firestore listener:", err);
     return () => {};
@@ -326,7 +351,7 @@ export const subscribeToUserTasks = (userId, userEmail, onUpdate, onError) => {
 };
 
 /**
- * Fetch All Tasks from Cloud Database for User
+ * Fetch All Tasks from Cloud Database for User (Dual Query by Email & UID)
  */
 export const getUserTasksFromCloud = async (userId, userEmail) => {
   const { db } = getFirebaseInstance();
@@ -334,28 +359,37 @@ export const getUserTasksFromCloud = async (userId, userEmail) => {
 
   try {
     const cleanEmail = userEmail ? userEmail.trim().toLowerCase() : null;
-    let q;
+    const taskMap = new Map();
 
     if (cleanEmail) {
-      q = query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail));
-    } else {
-      q = query(collection(db, 'tasks'), where('userId', '==', userId));
+      try {
+        const qEmail = query(collection(db, 'tasks'), where('userEmail', '==', cleanEmail));
+        const snapEmail = await getDocs(qEmail);
+        snapEmail.docs.forEach(doc => {
+          taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+      } catch (errEmail) {
+        console.warn("Could not fetch tasks by email:", errEmail);
+      }
     }
 
-    const querySnapshot = await getDocs(q);
-    const tasks = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    // If query by email was empty and we have userId, try query by userId as fallback
-    if (tasks.length === 0 && cleanEmail && userId) {
-      const fallbackQuery = query(collection(db, 'tasks'), where('userId', '==', userId));
-      const fallbackSnap = await getDocs(fallbackQuery);
-      return fallbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if (userId) {
+      try {
+        const qId = query(collection(db, 'tasks'), where('userId', '==', userId));
+        const snapId = await getDocs(qId);
+        snapId.docs.forEach(doc => {
+          taskMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+      } catch (errId) {
+        console.warn("Could not fetch tasks by userId:", errId);
+      }
     }
 
-    return tasks;
+    const allTasks = Array.from(taskMap.values()).sort((a, b) => {
+      return new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0);
+    });
+
+    return allTasks;
   } catch (err) {
     console.warn("Failed to fetch cloud tasks:", err);
     return [];
