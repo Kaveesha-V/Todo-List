@@ -101,9 +101,6 @@ export const saveStoredAccounts = (accounts) => {
 };
 
 // Theme Storage
-const STORAGE_KEY_AUDIT_LOGS = 'aura_audit_login_logs_v1';
-const STORAGE_KEY_BROADCAST = 'aura_system_broadcast_v1';
-
 export const loadStoredTheme = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_THEME);
@@ -122,48 +119,4 @@ export const saveStoredTheme = (theme) => {
   }
 };
 
-// Login Audit Logs Storage
-export const loadAuditLogs = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_AUDIT_LOGS);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {
-    console.warn("Failed to load audit logs", e);
-  }
-  return [];
-};
-
-export const saveAuditLogs = (logs) => {
-  try {
-    localStorage.setItem(STORAGE_KEY_AUDIT_LOGS, JSON.stringify(logs.slice(0, 150))); // Keep last 150 events
-  } catch (e) {
-    console.warn("Failed to save audit logs", e);
-  }
-};
-
-// System Broadcast Storage
-export const loadSystemBroadcast = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_BROADCAST);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {
-    console.warn("Failed to load system broadcast", e);
-  }
-  return null;
-};
-
-export const saveSystemBroadcast = (broadcast) => {
-  try {
-    if (broadcast) {
-      localStorage.setItem(STORAGE_KEY_BROADCAST, JSON.stringify(broadcast));
-    } else {
-      localStorage.removeItem(STORAGE_KEY_BROADCAST);
-    }
-  } catch (e) {
-    console.warn("Failed to save system broadcast", e);
-  }
-};
 

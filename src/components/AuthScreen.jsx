@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth, SYSTEM_ADMIN_CREDENTIALS } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { isCloudDatabaseReady } from '../services/firebaseDb';
 import {
   CheckCircle2,
@@ -381,27 +381,6 @@ export const AuthScreen = () => {
                 </button>
               </p>
             )}
-          </div>
-
-          {/* Quick System Admin Access Shortcut */}
-          <div className="admin-quick-access-banner">
-            <div className="admin-quick-header">
-              <Shield size={13} className="admin-shield-icon" />
-              <span>System Admin:</span>
-            </div>
-            <button
-              type="button"
-              className="admin-autofill-btn"
-              onClick={() => {
-                setMode('login');
-                setEmail(SYSTEM_ADMIN_CREDENTIALS.email);
-                setPassword(SYSTEM_ADMIN_CREDENTIALS.password);
-                setErrorMsg('');
-              }}
-              title="Auto-fill System Admin Credentials"
-            >
-              1-Click Fill Admin Credentials
-            </button>
           </div>
 
           {/* Privacy Footnote */}
